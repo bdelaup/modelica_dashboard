@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 990" font-family="Inter, Arial, sans-serif">
+  <style>
+    .uc { fill: #e8f0fe; stroke: #3b6ea5; stroke-width: 1.5; }
+    .uc-label { fill: #1a3a5c; font-size: 13px; text-anchor: middle; }
+    .actor { stroke: #333; stroke-width: 2; fill: none; stroke-linecap: round; }
+    .actor-head { fill: #fff; stroke: #333; stroke-width: 2; }
+    .actor-name { fill: #111; font-size: 13px; font-weight: 600; text-anchor: middle; }
+    .assoc { stroke: #555; stroke-width: 1.4; }
+    .dep { stroke: #888; stroke-width: 1.4; stroke-dasharray: 5 4; }
+    .dep-label { fill: #777; font-size: 11px; font-style: italic; }
+    .title { fill: #111; font-size: 18px; font-weight: 700; text-anchor: middle; }
+  </style>
+
+  <text class="title" x="600" y="34">Diagramme de cas d'utilisation — modelica_dashboard</text>
+
+  <!-- Cas d'utilisation -->
+  <g>
+    <ellipse class="uc" cx="600" cy="90"  rx="190" ry="30"/><text class="uc-label" x="600" y="94">UC1 — Poser des blocs dashboard dans le modèle</text>
+    <ellipse class="uc" cx="600" cy="166" rx="190" ry="30"/><text class="uc-label" x="600" y="170">UC2 — Masquer / afficher un port (case à cocher)</text>
+    <ellipse class="uc" cx="600" cy="242" rx="190" ry="30"/><text class="uc-label" x="600" y="246">UC3 — Créer / modifier un tableau de bord</text>
+    <ellipse class="uc" cx="600" cy="318" rx="190" ry="30"/><text class="uc-label" x="600" y="322">UC4 — Enregistrer la définition du dashboard</text>
+    <ellipse class="uc" cx="600" cy="394" rx="190" ry="30"/><text class="uc-label" x="600" y="398">UC5 — Run : simulation en temps réel</text>
+    <ellipse class="uc" cx="600" cy="470" rx="190" ry="30"/><text class="uc-label" x="600" y="474">UC6 — Run jusqu'à la fin (stopTime ou durée saisie)</text>
+    <ellipse class="uc" cx="600" cy="546" rx="190" ry="30"/><text class="uc-label" x="600" y="550">UC7 — Mettre la simulation en pause</text>
+    <ellipse class="uc" cx="600" cy="622" rx="190" ry="30"/><text class="uc-label" x="600" y="626">UC8 — Visualiser les grandeurs (valeurs, jauges, courbes)</text>
+    <ellipse class="uc" cx="600" cy="698" rx="190" ry="30"/><text class="uc-label" x="600" y="702">UC9 — Agir sur la simulation (boutons, sliders, saisies)</text>
+    <ellipse class="uc" cx="600" cy="774" rx="190" ry="30"/><text class="uc-label" x="600" y="778">UC10 — Durée de simulation et ratio temps réel</text>
+    <ellipse class="uc" cx="600" cy="850" rx="190" ry="30"/><text class="uc-label" x="600" y="854">UC11 — Journal info : variables non connectées</text>
+    <ellipse class="uc" cx="600" cy="926" rx="190" ry="30"/><text class="uc-label" x="600" y="930">UC12 — Valeurs par défaut côté modèle (pas de plantage)</text>
+  </g>
+
+  <!-- Dépendance UC11 -> UC12 -->
+  <line class="dep" x1="600" y1="880" x2="600" y2="896"/>
+  <polygon points="600,902 595,894 605,894" fill="#888"/>
+  <text class="dep-label" x="612" y="894">valeurs par défaut</text>
+
+  <!-- Acteur 1 : Concepteur de modèle -->
+  <g class="actor">
+    <circle class="actor-head" cx="120" cy="100" r="14"/>
+    <line x1="120" y1="114" x2="120" y2="154"/>
+    <line x1="96" y1="128" x2="144" y2="128"/>
+    <line x1="120" y1="154" x2="102" y2="184"/>
+    <line x1="120" y1="154" x2="138" y2="184"/>
+  </g>
+  <text class="actor-name" x="120" y="204">Concepteur de modèle</text>
+  <text class="actor-name" x="120" y="220" font-weight="400" font-size="11px">(utilisateur OMEdit)</text>
+  <line class="assoc" x1="134" y1="128" x2="408" y2="90"/>
+  <line class="assoc" x1="134" y1="132" x2="408" y2="166"/>
+
+  <!-- Acteur 2 : Concepteur de dashboard -->
+  <g class="actor">
+    <circle class="actor-head" cx="120" cy="252" r="14"/>
+    <line x1="120" y1="266" x2="120" y2="306"/>
+    <line x1="96" y1="280" x2="144" y2="280"/>
+    <line x1="120" y1="306" x2="102" y2="336"/>
+    <line x1="120" y1="306" x2="138" y2="336"/>
+  </g>
+  <text class="actor-name" x="120" y="356">Concepteur de dashboard</text>
+  <line class="assoc" x1="134" y1="278" x2="408" y2="242"/>
+  <line class="assoc" x1="134" y1="284" x2="408" y2="318"/>
+
+  <!-- Acteur 3 : Opérateur / superviseur -->
+  <g class="actor">
+    <circle class="actor-head" cx="1080" cy="612" r="14"/>
+    <line x1="1080" y1="626" x2="1080" y2="666"/>
+    <line x1="1056" y1="640" x2="1104" y2="640"/>
+    <line x1="1080" y1="666" x2="1062" y2="696"/>
+    <line x1="1080" y1="666" x2="1098" y2="696"/>
+  </g>
+  <text class="actor-name" x="1080" y="716">Opérateur / superviseur</text>
+  <line class="assoc" x1="1066" y1="634" x2="792" y2="394"/>
+  <line class="assoc" x1="1066" y1="638" x2="792" y2="470"/>
+  <line class="assoc" x1="1066" y1="642" x2="792" y2="546"/>
+  <line class="assoc" x1="1066" y1="646" x2="792" y2="622"/>
+  <line class="assoc" x1="1066" y1="650" x2="792" y2="698"/>
+  <line class="assoc" x1="1066" y1="654" x2="792" y2="774"/>
+  <line class="assoc" x1="1066" y1="658" x2="792" y2="850"/>
+</svg>

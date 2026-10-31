@@ -1,7 +1,7 @@
 # Spécification de besoins — modelica_dashboard
 
 **Projet** : environnement de tableaux de bord interactifs pour OpenModelica (exécution temps réel + supervision externe)
-**Version** : 1.0
+**Version** : 1.1
 **Statut** : validée avec le demandeur
 
 ---
@@ -72,93 +72,13 @@ L'environnement se compose de **trois éléments** :
 
 ---
 
-## 5. Diagramme de cas des exigences
+## 5. Diagramme de cas d'utilisation
 
-```mermaid
-flowchart TB
-    subgraph BIB["Bibliothèque OpenModelica"]
-        direction TB
-        EFB1["EF-B1<br/>Blocs entrée/sortie<br/>entier, booléen, flottant"]
-        EFB2["EF-B2<br/>Case à cocher<br/>masquant/affichant le port"]
-        EFB3["EF-B3<br/>Le port porte le nom<br/>de la variable du modèle"]
-        EFB4["EF-B4<br/>Variable absente du dashboard<br/>= valeur par défaut côté Modelica,<br/>sans plantage"]
-    end
-
-    subgraph EDIT["Outil de création de dashboards"]
-        direction TB
-        EFE1["EF-E1<br/>Palette complète de widgets<br/>(jauges, courbes, tableaux,<br/>boutons, textes, journal...)"]
-        EFE2["EF-E2<br/>Simple à prendre en main,<br/>aucune installation"]
-        EFE3["EF-E3<br/>Définition du dashboard dans un<br/>fichier à côté du .mo, nom libre"]
-        EFE4["EF-E4<br/>Modification du dashboard<br/>uniquement entre deux runs"]
-        EFE5["EF-E5<br/>Un seul dashboard et un seul<br/>viewer par modèle"]
-    end
-
-    subgraph VIEW["Outil d'affichage (viewer)"]
-        direction TB
-        EFV1["EF-V1<br/>Affiche la durée de simulation"]
-        EFV2["EF-V2<br/>Bouton Run (temps réel)"]
-        EFV3["EF-V3<br/>Bouton Run jusqu'à la fin<br/>(stopTime ou durée saisie,<br/>hors temps réel)"]
-        EFV4["EF-V4<br/>Bouton Pause"]
-        EFV5["EF-V5<br/>Si la simu ralentit : le temps<br/>simulé défile plus lentement et<br/>une jauge affiche le ratio"]
-        EFV6["EF-V6<br/>Variable absente côté modèle :<br/>widget marqué non connecté +<br/>message dans le journal info"]
-    end
-
-    subgraph ENV["Environnement"]
-        direction TB
-        EFI1["EF-I1<br/>Ajout/suppression d'E/S dashboard<br/>sans recompiler le modèle"]
-        ENF1["ENF-1<br/>Plugin OMEdit prioritaire<br/>(fenêtre dédiée ou vue intégrée),<br/>sinon web servie en local"]
-    end
-
-    BIB ==> EFB1 & EFB2 & EFB3 & EFB4
-    EDIT ==> EFE1 & EFE2 & EFE3 & EFE4 & EFE5
-    VIEW ==> EFV1 & EFV2 & EFV3 & EFV4 & EFV5 & EFV6
-    ENV ==> EFI1 & ENF1
-```
+![Diagramme de cas d'utilisation](assets/cas-utilisation.svg)
 
 ---
 
-## 6. Diagramme de cas d'utilisation
-
-```mermaid
-flowchart LR
-    subgraph acteurs["Acteurs"]
-        U1(["Concepteur de modèle<br/>utilisateur OMEdit"])
-        U2(["Concepteur de dashboard"])
-        U3(["Opérateur / superviseur"])
-    end
-
-    subgraph env["Environnement modelica_dashboard"]
-        UC1(["Poser des blocs dashboard<br/>dans le modèle"])
-        UC2(["Masquer / afficher un port<br/>case à cocher"])
-        UC3(["Créer / modifier un<br/>tableau de bord"])
-        UC4(["Enregistrer la définition<br/>du dashboard : fichier à côté du .mo"])
-        UC5(["Lancer la simulation<br/>en temps réel : Run"])
-        UC6(["Lancer la simulation<br/>jusqu'à la fin : Run jusqu'à la fin"])
-        UC7(["Mettre la simulation en pause"])
-        UC8(["Visualiser les grandeurs<br/>valeurs, jauges, courbes"])
-        UC9(["Agir sur la simulation<br/>boutons, sliders, saisies"])
-        UC10(["Consulter la durée de simu<br/>et le ratio temps réel"])
-        UC11(["Être informé des variables<br/>non connectées : journal info"])
-        UC12(["Bénéficier de valeurs par défaut<br/>côté modèle : pas de plantage"])
-    end
-
-    U1 --> UC1
-    U1 --> UC2
-    U2 --> UC3
-    U2 --> UC4
-    U3 --> UC5
-    U3 --> UC6
-    U3 --> UC7
-    U3 --> UC8
-    U3 --> UC9
-    U3 --> UC10
-    U3 --> UC11
-    UC11 -. valeurs par défaut .-> UC12
-```
-
----
-
-## 7. Hors périmètre / décisions actées
+## 6. Hors périmètre / décisions actées
 
 - **Hors périmètre** : modification du dashboard pendant un run (EF-E4 : entre deux runs uniquement).
 - **Acté** : en cas de dépassement du temps réel, pas de rattrapage par à-coups — le temps simulé ralentit et la jauge de ratio informe l'utilisateur (EF-V5).
