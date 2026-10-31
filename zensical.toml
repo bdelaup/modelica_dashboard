@@ -13,6 +13,7 @@ edit_uri = "edit/main/docs/"
 nav = [
   { "Accueil" = "index.md" },
   { "Spécification de besoins" = "besoin.md" },
+  { "Options techniques" = "option_technique.md" },
 ]
 
 [project.theme]

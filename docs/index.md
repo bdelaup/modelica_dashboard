@@ -5,6 +5,7 @@ Environnement de **tableaux de bord interactifs pour OpenModelica** : exécution
 ## Contenu de cette documentation
 
 - [Spécification de besoins](besoin.md) — exigences fonctionnelles et non fonctionnelles validées, diagramme de cas d'utilisation (SVG).
+- [Options techniques](option_technique.md) — axes d'architecture et possibilités ouvertes (aucune préférence retenue).
 
 ## Les trois éléments de l'environnement
 
