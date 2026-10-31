@@ -75,102 +75,44 @@ L'environnement se compose de **trois éléments** :
 ## 5. Diagramme de cas des exigences
 
 ```mermaid
-requirementDiagram
-    requirement "EF-B1 Blocs IO entiers/bool/float" {
-        id: EF-B1
-        text: La bibliothèque fournit des blocs entrée/sortie entier, booléen, flottant.
-    }
-    requirement "EF-B2 Port masquable" {
-        id: EF-B2
-        text: Case à cocher masquant/affichant le port du bloc.
-    }
-    requirement "EF-B3 Nom du port = variable" {
-        id: EF-B3
-        text: Le port porte le nom de la variable du modèle.
-    }
-    requirement "EF-B4 Valeur par défaut côté modèle" {
-        id: EF-B4
-        text: Variable absente du dashboard = valeur par défaut côté Modelica, sans plantage.
-    }
-    requirement "EF-E1 Palette de widgets" {
-        id: EF-E1
-        text: Éditeur avec palette complète (jauges, courbes, tableaux, boutons, textes, journal...).
-    }
-    requirement "EF-E2 Sans installation" {
-        id: EF-E2
-        text: Outil simple, aucune installation requise.
-    }
-    requirement "EF-E3 Fichier à côté du .mo" {
-        id: EF-E3
-        text: Définition du dashboard dans un fichier voisin du .mo, nom libre.
-    }
-    requirement "EF-E4 Édition entre deux runs" {
-        id: EF-E4
-        text: Modification du dashboard uniquement entre deux runs.
-    }
-    requirement "EF-V1 Durée de simulation" {
-        id: EF-V1
-        text: Le viewer affiche la durée de simulation.
-    }
-    requirement "EF-V2 Bouton Run (temps réel)" {
-        id: EF-V2
-        text: Bouton Run lançant l'exécution en temps réel.
-    }
-    requirement "EF-V3 Run jusqu'à la fin" {
-        id: EF-V3
-        text: Arrêt au stopTime ou à une durée saisie, hors temps réel.
-    }
-    requirement "EF-V4 Bouton Pause" {
-        id: EF-V4
-        text: Bouton Pause de la simulation.
-    }
-    requirement "EF-V5 Jauge de ratio temps réel" {
-        id: EF-V5
-        text: Si la simu ralentit, une jauge affiche le ratio de ralentissement.
-    }
-    requirement "EF-V6 Widget non connecté + journal" {
-        id: EF-V6
-        text: Variable absente côté modèle = widget marqué non connecté + message dans le journal.
-    }
-    requirement "EF-I1 Pas de recompilation" {
-        id: EF-I1
-        text: Ajout/suppression d'E/S dashboard sans recompiler le modèle.
-    }
-    requirement "ENF-1 Plugin OMEdit prioritaire" {
-        id: ENF-1
-        text: Outils en plugin OMEdit (fenêtre dédiée ou vue intégrée), sinon web local.
-    }
+flowchart TB
+    subgraph BIB["Bibliothèque OpenModelica"]
+        direction TB
+        EFB1["EF-B1<br/>Blocs entrée/sortie<br/>entier, booléen, flottant"]
+        EFB2["EF-B2<br/>Case à cocher<br/>masquant/affichant le port"]
+        EFB3["EF-B3<br/>Le port porte le nom<br/>de la variable du modèle"]
+        EFB4["EF-B4<br/>Variable absente du dashboard<br/>= valeur par défaut côté Modelica,<br/>sans plantage"]
+    end
 
-    element "Bibliothèque OpenModelica" {
-        type: package
-    }
-    element "Éditeur de dashboard" {
-        type: package
-    }
-    element "Viewer de dashboard" {
-        type: package
-    }
+    subgraph EDIT["Outil de création de dashboards"]
+        direction TB
+        EFE1["EF-E1<br/>Palette complète de widgets<br/>(jauges, courbes, tableaux,<br/>boutons, textes, journal...)"]
+        EFE2["EF-E2<br/>Simple à prendre en main,<br/>aucune installation"]
+        EFE3["EF-E3<br/>Définition du dashboard dans un<br/>fichier à côté du .mo, nom libre"]
+        EFE4["EF-E4<br/>Modification du dashboard<br/>uniquement entre deux runs"]
+        EFE5["EF-E5<br/>Un seul dashboard et un seul<br/>viewer par modèle"]
+    end
 
-    "Bibliothèque OpenModelica" - satisfies -> EF-B1
-    "Bibliothèque OpenModelica" - satisfies -> EF-B2
-    "Bibliothèque OpenModelica" - satisfies -> EF-B3
-    "Bibliothèque OpenModelica" - satisfies -> EF-B4
-    "Éditeur de dashboard" - satisfies -> EF-E1
-    "Éditeur de dashboard" - satisfies -> EF-E2
-    "Éditeur de dashboard" - satisfies -> EF-E3
-    "Éditeur de dashboard" - satisfies -> EF-E4
-    "Viewer de dashboard" - satisfies -> EF-V1
-    "Viewer de dashboard" - satisfies -> EF-V2
-    "Viewer de dashboard" - satisfies -> EF-V3
-    "Viewer de dashboard" - satisfies -> EF-V4
-    "Viewer de dashboard" - satisfies -> EF-V5
-    "Viewer de dashboard" - satisfies -> EF-V6
-    "Environnement" - satisfies -> EF-I1
-    "Environnement" - satisfies -> ENF-1
+    subgraph VIEW["Outil d'affichage (viewer)"]
+        direction TB
+        EFV1["EF-V1<br/>Affiche la durée de simulation"]
+        EFV2["EF-V2<br/>Bouton Run (temps réel)"]
+        EFV3["EF-V3<br/>Bouton Run jusqu'à la fin<br/>(stopTime ou durée saisie,<br/>hors temps réel)"]
+        EFV4["EF-V4<br/>Bouton Pause"]
+        EFV5["EF-V5<br/>Si la simu ralentit : le temps<br/>simulé défile plus lentement et<br/>une jauge affiche le ratio"]
+        EFV6["EF-V6<br/>Variable absente côté modèle :<br/>widget marqué non connecté +<br/>message dans le journal info"]
+    end
 
-    element "Environnement" {
-        type: package
-    }
+    subgraph ENV["Environnement"]
+        direction TB
+        EFI1["EF-I1<br/>Ajout/suppression d'E/S dashboard<br/>sans recompiler le modèle"]
+        ENF1["ENF-1<br/>Plugin OMEdit prioritaire<br/>(fenêtre dédiée ou vue intégrée),<br/>sinon web servie en local"]
+    end
+
+    BIB ==> EFB1 & EFB2 & EFB3 & EFB4
+    EDIT ==> EFE1 & EFE2 & EFE3 & EFE4 & EFE5
+    VIEW ==> EFV1 & EFV2 & EFV3 & EFV4 & EFV5 & EFV6
+    ENV ==> EFI1 & ENF1
 ```
 
 ---
@@ -180,24 +122,24 @@ requirementDiagram
 ```mermaid
 flowchart LR
     subgraph acteurs["Acteurs"]
-        U1(["Concepteur de modèle<br/>(utilisateur OMEdit)"])
+        U1(["Concepteur de modèle<br/>utilisateur OMEdit"])
         U2(["Concepteur de dashboard"])
         U3(["Opérateur / superviseur"])
     end
 
     subgraph env["Environnement modelica_dashboard"]
         UC1(["Poser des blocs dashboard<br/>dans le modèle"])
-        UC2(["Masquer / afficher un port<br/>(case à cocher)"])
+        UC2(["Masquer / afficher un port<br/>case à cocher"])
         UC3(["Créer / modifier un<br/>tableau de bord"])
-        UC4(["Enregistrer la définition<br/>du dashboard (fichier à côté du .mo)"])
-        UC5(["Lancer la simulation<br/>en temps réel (Run)"])
-        UC6(["Lancer la simulation<br/>jusqu'à la fin (Run jusqu'à la fin)"])
+        UC4(["Enregistrer la définition<br/>du dashboard : fichier à côté du .mo"])
+        UC5(["Lancer la simulation<br/>en temps réel : Run"])
+        UC6(["Lancer la simulation<br/>jusqu'à la fin : Run jusqu'à la fin"])
         UC7(["Mettre la simulation en pause"])
-        UC8(["Visualiser les grandeurs<br/>(valeurs, jauges, courbes)"])
-        UC9(["Agir sur la simulation<br/>(boutons, sliders, saisies)"])
+        UC8(["Visualiser les grandeurs<br/>valeurs, jauges, courbes"])
+        UC9(["Agir sur la simulation<br/>boutons, sliders, saisies"])
         UC10(["Consulter la durée de simu<br/>et le ratio temps réel"])
-        UC11(["Être informé des variables<br/>non connectées (journal info)"])
-        UC12(["Bénéficier de valeurs par défaut<br/>côté modèle (pas de plantage)"])
+        UC11(["Être informé des variables<br/>non connectées : journal info"])
+        UC12(["Bénéficier de valeurs par défaut<br/>côté modèle : pas de plantage"])
     end
 
     U1 --> UC1
@@ -211,7 +153,7 @@ flowchart LR
     U3 --> UC9
     U3 --> UC10
     U3 --> UC11
-    UC11 -.->|valeurs par défaut| UC12
+    UC11 -. valeurs par défaut .-> UC12
 ```
 
 ---
