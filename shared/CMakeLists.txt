@@ -25,6 +25,7 @@ add_executable(shared_tests
     tests/test_protocol.cpp
     tests/test_dashboard_file.cpp
     tests/test_pivot.cpp
+    tests/test_contract_golden.cpp
     third_party/catch2/catch_amalgamated.cpp
 )
 target_link_libraries(shared_tests PRIVATE dashboard_shared)

@@ -1,0 +1,11 @@
+{"type":"hello","version":0,"role":"simulation","variables":["motor.speed","motor.on"],"dashboardFile":"C:\\m\\Demo.dashboard.drawio"}
+{"type":"helloAck","version":0,"status":"ok"}
+{"type":"dashboard","version":0,"source":"auto","file":"C:\\m\\Demo.dashboard.drawio","xml":"<mxfile dashboardVersion=\"0\">...</mxfile>"}
+{"type":"unconnected","version":0,"variables":["ghost.var"]}
+{"type":"simState","version":0,"state":"running"}
+{"type":"data","version":0,"seq":1,"time":0.01,"values":{"motor.speed":0.0,"motor.on":true}}
+{"type":"tick","version":0,"seq":1,"simTime":0.01,"ratio":1.0,"values":{"motor.speed":0.0,"motor.on":true}}
+{"type":"cmd","version":0,"cmd":"set","variable":"motor.on","value":false}
+{"type":"data","version":0,"seq":2,"time":0.02,"values":{"motor.speed":12.5}}
+{"type":"state","version":0,"state":"finished"}
+{"type":"simState","version":0,"state":"finished"}
