@@ -1,0 +1,10 @@
+{
+  "name": "modelica-dashboard-viewer-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Logique JS du viewer (testable en Node, pont WebView2 injecté) — D19/D33",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

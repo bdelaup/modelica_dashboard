@@ -40,6 +40,22 @@ Les décisions structurantes sont consignées sous forme d'[ADR](adr/) ; le tabl
 | D23 | Sécurité | Loopback + validation de taille max uniquement — **risque accepté, documenté, à réévaluer** (voir §10) | [0011](adr/0011-securite.md) |
 | D24 | Backpressure | Le pivot pousse, le viewer écrase (seule la valeur la plus récente compte) | [0012](adr/0012-perf.md) |
 | D25 | Multi-instances | Un viewer = une simulation (EF-E5 strict) ; une 2ᵉ sim sur le port fixe est refusée | [0002](adr/0002-pivot-embarque-port-fixe.md) |
+| D26 | Port fixe du canal | `127.0.0.1:51234` | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D27 | OpenModelica cible | v1.27.1 (dernière release stable) épinglée pour biblio, DLL et CI | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D28 | Cœur risqué | POC/spike en parallèle du socle (binding par nom, commandes, temps réel) | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D29 | Contrat du canal | `docs/protocole.md` rédigé avant le code ; code et golden files s'y conforment | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D30 | Mécanisme de l'éditeur | draw.io en **iframe dans le WebView2**, servi via `app://`, piloté par `postMessage` (corrige §5/§8.6 : plus de navigateur externe ni de mini-serveur HTTP) | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D31 | Versions de départ | Produit v0.1.0, protocole `version: 0`, `dashboardVersion="0"` | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D32 | Widgets V1 | `value`, `gauge`, `curve`, `button`, `slider`, `log` (text/image/table en V2) | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D33 | Stack C++ | C++20 + CMake, nlohmann/json, Catch2 v3 (CTest), logique JS testée en Node LTS | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D34 | draw.io embarqué | v32.3.0, build statique webapp dans `viewer/third_party/` | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D35 | Taille max de trame | 1 MiB par ligne NDJSON | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D36 | Langue UI par défaut | Français (sélecteur FR/EN conservé) | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D37 | Logs | `%LOCALAPPDATA%\modelica_dashboard\logs\{viewer,pivot,sim}.log` | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D38 | DLL C externe | `DashboardExternal.dll`, exports préfixés `dashboard_` (contrat finalisé au POC) | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D39 | `showPort` (EF-B2) | Visé : `Placement(visible=showPort)` ; à valider au POC, repli documenté | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D40 | État sim→pivot | Message `state` sim→pivot ajouté au protocole (alimente `simState`) | [0013](adr/0013-decisions-mise-en-oeuvre.md) / [protocole.md](protocole.md) |
+| D41 | Ordre de dev | protocole.md → socle shared/ + contrat + CI → POC parallèle → pivot → biblio+DLL → viewer → éditeur iframe | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
 
 ---
 
@@ -55,7 +71,7 @@ flowchart LR
         PIVOT[pivot embarqué<br/>serveur loopback] --> WV[WebView2<br/>IHM embarquée app://]
         WV --> JS[logique viewer JS<br/>rendu R3 hybride]
     end
-    WV -.postMessage save.-> ED[éditeur draw.io self-hosté<br/>navigateur externe]
+    WV -.postMessage save.-> ED[éditeur draw.io embed<br/>iframe dans le WebView2]
     ED -->|écrit le fichier| F[(fichier .drawio<br/>à côté du .mo)]
     PIVOT -->|lit / pousse| F
     WV -->|lit au chargement| F
@@ -64,7 +80,7 @@ flowchart LR
 Flux de données :
 
 1. L'utilisateur lance `viewer.exe` (éventuellement avec le chemin du dashboard en argument).
-2. Le pivot écoute sur **127.0.0.1:PORT_FIXE** (voir §8.1 pour la valeur).
+2. Le pivot écoute sur **127.0.0.1:51234** (D26 ; contrat détaillé dans [protocole.md](protocole.md)).
 3. L'utilisateur lance la simulation depuis OMEdit ; la fonction C externe de la bibliothèque se connecte au port fixe et s'identifie (handshake, §8.2).
 4. En mode **auto**, la sim pousse le chemin du fichier dashboard ; en mode **manuel**, l'utilisateur charge le dashboard dans le viewer.
 5. Pendant le run : la sim pousse les valeurs à chaque pas de solveur (sim → pivot → WebView) ; les actionneurs et commandes (Run/Pause/Stop) font le chemin inverse (WebView → pivot → sim).
@@ -86,7 +102,7 @@ Flux de données :
 
 ### 2.2 Comportement de la fonction C externe
 
-- **Au démarrage de la simulation** : connexion TCP à `127.0.0.1:PORT_FIXE` ; handshake (§8.2) incluant la liste des noms de variables du modèle (`variableName` des blocs visibles) et, en mode auto, le `dashboardFile`.
+- **Au démarrage de la simulation** : connexion TCP à `127.0.0.1:51234` (D26) ; handshake (§8.2) incluant la liste des noms de variables du modèle (`variableName` des blocs visibles) et, en mode auto, le `dashboardFile`.
 - **Résolution par nom (EF-I1)** : à chaque appel, la fonction C interroge la table des variables du runtime compilé (nom → adresse/valeur). Aucune recompilation n'est nécessaire quand le dashboard change.
 - **Valeur par défaut (EF-B4, D15)** : si le nom n'a jamais été résolu côté dashboard → `defaultValue` du bloc ; si une valeur a déjà été reçue → dernière valeur reçue conservée.
 - **Pendant le run** : à chaque pas de solveur, envoi des sorties des blocs vers le pivot (données, §8.3) ; réception et application des actionneurs reçus du pivot.
@@ -106,7 +122,7 @@ Serveur loopback embarqué dans `viewer.exe` (D2) : accepte **une seule** connex
 
 ### 3.2 Cycle de vie
 
-1. Démarrage du viewer → le pivot ouvre `127.0.0.1:PORT_FIXE` en écoute.
+1. Démarrage du viewer → le pivot ouvre `127.0.0.1:51234` (D26) en écoute.
 2. Connexion d'une sim → handshake validé → état `CONNECTED`. Toute connexion supplémentaire est **refusée** (log + message d'erreur), conformément à EF-E5/D25.
 3. Réception du dashboard (mode auto poussé par la sim, ou mode manuel demandé par l'utilisateur) → lecture du fichier `.drawio` → envoi au viewer + résolution des noms (intersection noms modèle ∩ noms dashboard) :
    - nom présent des deux côtés → flux actif ;
@@ -138,7 +154,7 @@ Le pivot pousse toutes les valeurs à chaque pas sans jamais bloquer la simulati
 - Widgets du dashboard rendus selon R3 (D8) : structure/layout par le moteur draw.io (`viewer-static.min.js` en lecture seule, cellules mises à jour via l'API mxGraph), courbes d'historique et jauge de ratio en **canvas HTML superposé** positionné sur les cellules concernées.
 - **Journal de messages** (EF-V6) : variables non connectées, erreurs de protocole, événements de cycle de vie.
 - Bouton **Recharger** (D13) : relit le fichier `.drawio` entre deux runs (EF-E4).
-- Bouton **Éditer** : ouvre l'éditeur externe (draw.io) sur le dashboard courant.
+- Bouton **Éditer** : ouvre l'éditeur (draw.io en iframe dans le WebView2, D30) sur le dashboard courant.
 - I18n FR/EN (D21) : chaînes externalisées, sélecteur de langue.
 
 ### 4.3 Cloisonnement
@@ -147,11 +163,12 @@ La logique du viewer (rendu R3, gestion des widgets, traitement des messages du 
 
 ---
 
-## 5. Bloc 4 — Éditeur (externe)
+## 5. Bloc 4 — Éditeur (iframe draw.io dans le WebView2)
 
-- **draw.io self-hosté en mode embed** (`?embed=1&proto=json&configure=1`), build statique embarqué dans `viewer.exe` et servi en local sur 127.0.0.1 par un mini-serveur interne du binaire (bind 127.0.0.1 uniquement), ouvert dans le **navigateur externe** du poste (D6). L'iframe est pilotée par `postMessage` : l'hôte envoie `load` (XML du dashboard courant), reçoit `save`/`autosave` (XML).
-- **Écriture du fichier (C2, D12)** : à chaque `save`, notre application écrit le XML reçu **à côté du `.mo`**, sous le nom choisi par l'utilisateur (EF-E3). Aucun stockage propre côté draw.io.
-- **Palette de widgets (EF-E1)** : bibliothèques de formes custom au format `<mxlibrary>` servies en local (`clibs`), une forme par type de widget (jauge, courbe, bouton, slider, texte, image, journal…).
+- **draw.io self-hosté en mode embed** (`?embed=1&proto=json&configure=1`), build statique (**v32.3.0**, D34) embarqué dans `viewer.exe` et servi via le protocole custom `app://` (D9/D30) dans une **iframe du WebView2** — aucun mini-serveur HTTP, aucun navigateur externe, aucun port supplémentaire (ENF-2 renforcé).
+- L'iframe est pilotée par `postMessage` : l'hôte envoie `load` (XML du dashboard courant), reçoit `save`/`autosave` (XML).
+- **Écriture du fichier (C2, D12)** : à chaque `save`, notre application écrit le XML **à côté du `.mo`**, sous le nom choisi par l'utilisateur (EF-E3). Aucun stockage propre côté draw.io.
+- **Palette de widgets (EF-E1, D32)** : bibliothèques de formes custom au format `<mxlibrary>` servies via `app://`, une forme par type de widget V1 (`value`, `gauge`, `curve`, `button`, `slider`, `log`).
 - **Sécurité** : le XML reçu n'est **jamais injecté via `innerHTML`** ; il est écrit tel quel sur disque et rendu côté viewer uniquement via le moteur draw.io ou un parser XML propre.
 - L'édition n'est possible qu'entre deux runs (EF-E4) : le bouton Éditer est désactivé pendant un run.
 
@@ -161,8 +178,8 @@ La logique du viewer (rendu R3, gestion des widgets, traitement des messages du 
 
 - Format natif draw.io : `<mxfile><diagram><mxGraphModel><root><mxCell …/></root></mxGraphModel></diagram></mxfile>` (D7).
 - Chaque widget = une cellule `UserObject` avec attributs personnalisés :
-  - `dashboardVersion` (entier, champ de version du format — D20) sur l'élément racine `mxfile` ;
-  - `type` : type de widget (`gauge`, `curve`, `button`, `slider`, `text`, `image`, `log`, `value`…) ;
+  - `dashboardVersion` (entier, champ de version du format — D20/D31, **0 en V1**) sur l'élément racine `mxfile` ;
+  - `type` : type de widget V1 (`value`, `gauge`, `curve`, `button`, `slider`, `log` — D32 ; `text`, `image`, `table` en V2) ;
   - `variable` : nom de la variable Modelica associée (résolution par nom, EF-I1) ;
   - attributs de style/position natifs mxGraph (`style`, `geometry`, `vertex="1"`…).
 - Le fichier est enregistré **à côté du `.mo`**, sous un **nom libre choisi par l'utilisateur** (EF-E3).
@@ -180,7 +197,7 @@ modelica_dashboard/
 ├── docs/                  # Zensical : besoin, options, spec_technique, contributeur, protocole, utilisateur, adr/
 ├── viewer/                # binaire C++/Win32 : pivot embarqué + WebView2 + IHM embarquée (app://) + draw.io self-hosté
 │   ├── CMakeLists.txt     # build propre du composant
-│   ├── src/cpp/           # pivot (serveur loopback), hôte WebView2, pont natif, mini-serveur draw.io
+│   ├── src/cpp/           # pivot (serveur loopback), hôte WebView2, pont natif, iframe éditeur
 │   ├── src/web/           # bibliothèque JS du viewer (testable en Node) + assets IHM embarqués
 │   └── third_party/       # draw.io build statique embarqué
 ├── modelica/              # package Modelica Dashboard + fonction C externe (DLL)
@@ -204,55 +221,57 @@ Règles de cloisonnement :
 
 ### 8.1 Canal modèle ↔ pivot — transport
 
-- **Transport** : TCP sur `127.0.0.1:PORT_FIXE` (port fixe par défaut, D5 ; valeur exacte définie dans `shared/` et documentée dans `docs/protocole.md`). Une seule connexion acceptée (D25).
+- **Transport** : TCP sur `127.0.0.1:51234` (port fixe, D5/D26 ; contrat complet dans [protocole.md](protocole.md)). Une seule connexion acceptée (D25).
 - **Framing** : JSON texte **newline-delimited** (un objet JSON par ligne) si les benchmarks à 1000 variables × 100 Hz le permettent (D4) ; repli : trames binaires length-prefixed `[uint32 longueur][uint8 type][payload]`.
-- **Validation** : taille maximale par trame (D23) ; à réévaluer (voir §10).
+- **Validation** : taille maximale par trame **1 MiB** (D35, D23) ; à réévaluer (voir §10).
 
 ### 8.2 Handshake (sim → pivot, à la connexion)
 
 ```json
-{"type": "hello", "version": 1, "role": "simulation",
+{"type": "hello", "version": 0, "role": "simulation",
  "variables": ["a.b", "c.d"],
  "dashboardFile": "C:\\models\\Modele.dashboard.drawio"}
 ```
 
-- `version` : version du protocole (D20).
+- `version` : version du protocole (D20/D31, **0 en V1**).
 - `variables` : noms (`variableName`) des blocs visibles du modèle.
 - `dashboardFile` : présent uniquement en mode **auto** (D11) ; absent en mode manuel.
-- Réponse du pivot : `{"type": "helloAck", "version": 1, "status": "ok"}` ou `{"type": "error", "code": "…", "message": "…"}` (ex. version non supportée, connexion refusée car sim déjà active).
+- Réponse du pivot : `{"type": "helloAck", "version": 0, "status": "ok"}` ou `{"type": "error", "code": "…", "message": "…"}` (ex. version non supportée, connexion refusée car sim déjà active).
 
 ### 8.3 Données (sim → pivot → viewer)
 
 Un message par pas de solveur, batchant toutes les variables mises à jour :
 
 ```json
-{"type": "data", "version": 1, "seq": 1234, "time": 12.34,
+{"type": "data", "version": 0, "seq": 1234, "time": 12.34,
  "values": {"a.b": 1.5, "c.d": true}}
 ```
 
-Le pivot ajoute le ratio temps réel/simulé (EF-V5) avant retransmission au viewer : `{"type": "tick", "version": 1, "seq": 1234, "simTime": 12.34, "ratio": 0.98, "values": {…}}`.
+Le pivot ajoute le ratio temps réel/simulé (EF-V5) avant retransmission au viewer : `{"type": "tick", "version": 0, "seq": 1234, "simTime": 12.34, "ratio": 0.98, "values": {…}}`.
+
+Un message d'état sim→pivot complète le flux (D40) : `{"type": "state", "version": 0, "state": "running|paused|stopped|finished"}`.
 
 ### 8.4 Signaux d'état (pivot → viewer)
 
-- `{"type": "unconnected", "version": 1, "variables": ["x.y"]}` — variables du dashboard absentes du modèle (EF-V6) : widget en état visuel de non-connexion + message dans le journal.
-- `{"type": "dashboard", "version": 1, "source": "auto|manual", "file": "…", "xml": "<mxfile>…"}` — push du dashboard (mode auto) ou confirmation de chargement (mode manuel).
-- `{"type": "simState", "version": 1, "state": "running|paused|stopped|finished"}`.
+- `{"type": "unconnected", "version": 0, "variables": ["x.y"]}` — variables du dashboard absentes du modèle (EF-V6) : widget en état visuel de non-connexion + message dans le journal.
+- `{"type": "dashboard", "version": 0, "source": "auto|manual", "file": "…", "xml": "<mxfile>…"}` — push du dashboard (mode auto) ou confirmation de chargement (mode manuel).
+- `{"type": "simState", "version": 0, "state": "running|paused|stopped|finished"}`.
 
 ### 8.5 Commandes (viewer → pivot → sim)
 
 ```json
-{"type": "cmd", "version": 1, "cmd": "run"}
-{"type": "cmd", "version": 1, "cmd": "pause"}
-{"type": "cmd", "version": 1, "cmd": "runToEnd", "duration": 10.0}
-{"type": "cmd", "version": 1, "cmd": "stop"}
-{"type": "cmd", "version": 1, "cmd": "set", "variable": "a.b", "value": 2.0}
+{"type": "cmd", "version": 0, "cmd": "run"}
+{"type": "cmd", "version": 0, "cmd": "pause"}
+{"type": "cmd", "version": 0, "cmd": "runToEnd", "duration": 10.0}
+{"type": "cmd", "version": 0, "cmd": "stop"}
+{"type": "cmd", "version": 0, "cmd": "set", "variable": "a.b", "value": 2.0}
 ```
 
 `runToEnd` sans `duration` s'arrête au `stopTime` du modèle (EF-V3). Les `set` sont les actionneurs (boutons, sliders) appliqués à la sim.
 
-### 8.6 Interface viewer ↔ éditeur (draw.io embed)
+### 8.6 Interface viewer ↔ éditeur (draw.io embed, iframe dans le WebView2 — D30)
 
-- L'éditeur est servi par le mini-serveur interne du binaire sur `127.0.0.1` (bind loopback) et ouvert dans le navigateur externe.
+- L'éditeur draw.io (build statique embarqué, D34) est servi via `app://` et chargé dans une **iframe du WebView2** — pas de navigateur externe, pas de mini-serveur HTTP.
 - `postMessage` : hôte → iframe `{"action": "load", "xml": "…"}` ; iframe → hôte `{"event": "save", "xml": "…"}` / `{"event": "autosave", "xml": "…"}`.
 - À chaque `save`, l'hôte écrit le XML dans le fichier dashboard (C2, D12). L'édition est bloquée pendant un run (EF-E4).
 
@@ -288,9 +307,9 @@ Pyramide retenue (D19) : **unitaires + intégration + contrat**, pas d'E2E WebVi
 
 ## 10. Sécurité (ENF-2)
 
-- **Loopback strict** : le seul port TCP ouvert est `127.0.0.1:PORT_FIXE` (canal) ; le mini-serveur draw.io est en bind 127.0.0.1 ; l'IHM du viewer n'ouvre aucun port (`app://`). Aucun composant n'est exposé publiquement (ENF-2).
+- **Loopback strict** : le seul port TCP ouvert est `127.0.0.1:51234` (canal, D26) ; l'IHM du viewer et l'éditeur draw.io sont servis via `app://` (ressources embarquées, iframe dans le WebView2 — D30), sans aucun port HTTP. Aucun composant n'est exposé publiquement (ENF-2).
 - **WebView** : IHM servie uniquement via `app://` (ressources embarquées) — pas de navigation externe possible, pas de `file://`.
-- **Validation des entrées** : taille maximale par trame sur le canal (D23).
+- **Validation des entrées** : taille maximale par trame sur le canal : **1 MiB** (D23/D35).
 - **XML** : jamais d'injection via `innerHTML` (§5).
 - ⚠️ **Risque accepté, à réévaluer (D23)** : au-delà de la taille max, aucune validation sémantique des trames (pas de vérification d'enum de type, de jeu de caractères des noms, ni d'authentification de la connexion). Tout processus local peut envoyer des données forgées sur le port fixe. Ce risque est accepté en V1 (menace limitée aux processus de confiance sur le poste) et **doit être réévalué** si le périmètre change (multi-utilisateur, port configurable, exposition réseau). Voir [ADR-0011](adr/0011-securite.md).
 
@@ -315,8 +334,8 @@ Tout est dans `docs/`, publié par Zensical (ENF-3) :
 | [Spécification de besoins](besoin.md) | EF/ENF validées |
 | [Options techniques](option_technique.md) / [Options d'architecture](options_archtecture.md) | Axes et architectures évaluées |
 | `spec_technique.md` (ce document) | Architecture A4b, interfaces, tests, livraison |
-| `protocole.md` | Contrat détaillé du canal : handshake, messages, codes d'erreur, exemples issus des tests de contrat |
-| `contributeur.md` | Build local (même séquence que la CI via `scripts/build.ps1`), tests, PR |
+| `protocole.md` | Contrat détaillé du canal : transport (127.0.0.1:51234), framing NDJSON + limite 1 MiB, handshake, messages, codes d'erreur, cycle de vie, exemples issus des tests de contrat |
+| `contributeur.md` | Prérequis (OM v1.27.1, Node LTS, MSVC/CMake), arborescence, build local (même séquence que la CI via `scripts/build.ps1`), tests, PR |
 | `adr/` | Une fiche par décision tranchée (contexte, décision, conséquences) |
 | Doc utilisateur (FR/EN) | Installation du package Modelica, lancement du viewer, édition d'un dashboard, utilisation en run |
 

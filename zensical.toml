@@ -16,7 +16,9 @@ nav = [
   { "Options techniques" = "option_technique.md" },
   { "Options d'architecture" = "options_archtecture.md" },
   { "Spécification technique (A4b)" = "spec_technique.md" },
-  { "ADR" = "adr/0001-architecture-a4b.md" },
+  { "Protocole du canal" = "protocole.md" },
+  { "Guide du contributeur" = "contributeur.md" },
+  { "ADR" = "adr/index.md" },
 ]
 
 [project.theme]
