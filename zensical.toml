@@ -15,6 +15,8 @@ nav = [
   { "Spécification de besoins" = "besoin.md" },
   { "Options techniques" = "option_technique.md" },
   { "Options d'architecture" = "options_archtecture.md" },
+  { "Spécification technique (A4b)" = "spec_technique.md" },
+  { "ADR" = "adr/0001-architecture-a4b.md" },
 ]
 
 [project.theme]
