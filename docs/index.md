@@ -7,6 +7,7 @@ Environnement de **tableaux de bord interactifs pour OpenModelica** : exécution
 - [Spécification de besoins](besoin.md) — exigences fonctionnelles et non fonctionnelles validées, diagramme de cas d'utilisation (SVG).
 - [Options techniques](option_technique.md) — axes d'architecture et possibilités ouvertes (aucune préférence retenue).
 - [Options d'architecture](options_archtecture.md) — architectures globales retenues après tri (A2, A4a, A4b, A5, A6), avantages/inconvénients et scores.
+- [Spécification technique (A4b)](spec_technique.md) — architecture retenue : blocs (bibliothèque, pivot, viewer, éditeur), interfaces exhaustives, format du fichier dashboard, tests, livraison, sécurité, versioning. Les décisions tranchées sont consignées en [ADR](adr/0001-architecture-a4b.md).
 
 ## Les trois éléments de l'environnement
 
