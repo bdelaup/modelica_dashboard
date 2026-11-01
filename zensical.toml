@@ -14,6 +14,7 @@ nav = [
   { "Accueil" = "index.md" },
   { "Spécification de besoins" = "besoin.md" },
   { "Options techniques" = "option_technique.md" },
+  { "Options d'architecture" = "options_archtecture.md" },
 ]
 
 [project.theme]
