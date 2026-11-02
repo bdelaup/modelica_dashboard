@@ -144,7 +144,7 @@ DASHBOARD_API int dashboard_client_connect(const char* variablesCsv, const char*
 }
 
 static void push_output(const char* name, const char* valueJson) {
-    if (!g_connected) return;
+    if (!g_connected || g_sock == SOCK_INV) return;
     char line[4096];
     snprintf(line, sizeof(line),
         "{\"type\":\"data\",\"version\":0,\"seq\":%lu,\"time\":0,\"values\":{\"%s\":%s}}",
@@ -189,6 +189,7 @@ static void apply_set(const char* name, const char* valueJson) {
 
 /* Lit les commandes en attente (non bloquant) : cmd set -> apply_set */
 static void poll_commands(void) {
+    if (g_sock == SOCK_INV || !g_connected) return;
 #if defined(_WIN32)
     u_long avail = 0;
     if (ioctlsocket(g_sock, FIONREAD, &avail) != 0 || avail == 0) return;
