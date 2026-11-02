@@ -77,13 +77,33 @@ bool Pivot::start(PivotEvents events) {
 void Pivot::stop() {
     if (!running_.exchange(false)) return;
     listening_ = false;
+    // réveille accept() : connexion factice sur le port d'écoute
+    {
+        socket_t w = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (w != kInvalidSocket) {
+            sockaddr_in addr{};
+            addr.sin_family = AF_INET;
+            addr.sin_port = htons(kPort);
+            inet_pton(AF_INET, std::string(kLoopbackHost).c_str(), &addr.sin_addr);
+            connect(w, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+            closeSocket(w);
+        }
+    }
     if (listenFd_ != -1 && listenFd_ != kInvalidSocket) {
-        shutdown(listenFd_, 2 /*SD_BOTH*/);
+#if defined(_WIN32)
+        shutdown(listenFd_, SD_BOTH);
+#else
+        shutdown(listenFd_, SHUT_RDWR);
+#endif
         closeSocket(listenFd_);
         listenFd_ = -1;
     }
     if (clientFd_ != -1 && clientFd_ != kInvalidSocket) {
-        shutdown(clientFd_, 2);
+#if defined(_WIN32)
+        shutdown(clientFd_, SD_BOTH);
+#else
+        shutdown(clientFd_, SHUT_RDWR);
+#endif
         closeSocket(clientFd_);
         clientFd_ = -1;
     }
@@ -168,6 +188,11 @@ disconnect:
     {
         std::lock_guard<std::mutex> lk(sendMutex_);
         if (clientFd_ != -1 && clientFd_ != kInvalidSocket) {
+#if defined(_WIN32)
+            shutdown(static_cast<socket_t>(clientFd_), SD_BOTH);
+#else
+            shutdown(static_cast<socket_t>(clientFd_), SHUT_RDWR);
+#endif
             closeSocket(static_cast<socket_t>(clientFd_));
             clientFd_ = -1;
         }

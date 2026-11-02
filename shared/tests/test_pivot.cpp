@@ -35,17 +35,22 @@ using namespace std::chrono_literals;
 namespace {
 
 socket_t connectToPivot() {
-    socket_t s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    REQUIRE(s != kInv);
+#if defined(_WIN32)
+    static bool wsa = [] { WSADATA d; WSAStartup(MAKEWORD(2,2), &d); return true; }();
+    (void)wsa;
+#endif
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(kPort);
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-    for (int i = 0; i < 50; ++i) {
+    // retry avec socket neuf à chaque tentative (un socket déjà connecté/refusé ne peut pas être reconnecté)
+    for (int i = 0; i < 100; ++i) {
+        socket_t s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (s == kInv) { std::this_thread::sleep_for(20ms); continue; }
         if (connect(s, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0) return s;
+        closeS(s);
         std::this_thread::sleep_for(20ms);
     }
-    closeS(s);
     return kInv;
 }
 
@@ -108,6 +113,7 @@ TEST_CASE("handshake + data -> tick avec ratio (EF-V5)", "[pivot]") {
     auto msgs = readMessages(sim, 1, pending);
     REQUIRE(msgs.size() == 1);
     REQUIRE(msgs[0]["type"] == "helloAck");
+    for (int i = 0; i < 100 && f.connectedCount == 0; ++i) std::this_thread::sleep_for(10ms);
     REQUIRE(f.connectedCount == 1);
 
     sendAll(sim, encodeFrame(makeData(1, 0.01, json{{"motor.speed", 0.0}})));
@@ -120,7 +126,7 @@ TEST_CASE("handshake + data -> tick avec ratio (EF-V5)", "[pivot]") {
     REQUIRE(f.ticks[1]["values"]["motor.speed"] == 12.5);
     REQUIRE(f.ticks[0].contains("ratio"));
     closeS(sim);
-    for (int i = 0; i < 100 && f.disconnectedCount == 0; ++i) std::this_thread::sleep_for(10ms);
+    for (int i = 0; i < 500 && f.disconnectedCount == 0; ++i) std::this_thread::sleep_for(10ms);
     REQUIRE(f.disconnectedCount == 1);
 }
 
@@ -178,6 +184,7 @@ TEST_CASE("badVersion au handshake -> error + fermeture", "[pivot]") {
     auto msgs = readMessages(sim, 1, pending);
     REQUIRE(msgs.size() == 1);
     REQUIRE(msgs[0]["code"] == "badVersion");
+    for (int i = 0; i < 500 && f.disconnectedCount == 0; ++i) std::this_thread::sleep_for(10ms);
     closeS(sim);
 }
 

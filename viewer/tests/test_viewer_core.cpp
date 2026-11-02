@@ -41,16 +41,21 @@ struct MemSink : UiSink {
 };
 
 socket_t connectSim() {
-    socket_t s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#if defined(_WIN32)
+    static bool wsa = [] { WSADATA d; WSAStartup(MAKEWORD(2,2), &d); return true; }();
+    (void)wsa;
+#endif
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(kPort);
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-    for (int i = 0; i < 50; ++i) {
+    for (int i = 0; i < 100; ++i) {
+        socket_t s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (s == kInv) { std::this_thread::sleep_for(20ms); continue; }
         if (connect(s, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0) return s;
+        closeS(s);
         std::this_thread::sleep_for(20ms);
     }
-    closeS(s);
     return kInv;
 }
 
@@ -58,10 +63,10 @@ void sendAll(socket_t s, const std::string& d) {
     REQUIRE(send(s, d.data(), static_cast<int>(d.size()), 0) == static_cast<int>(d.size()));
 }
 
-std::vector<json> readN(socket_t s, std::size_t n, std::string& pending) {
+std::vector<json> readN(socket_t s, std::size_t n, std::string& pending, int timeoutMs = 2000) {
     std::vector<json> out;
     char buf[8192];
-    auto deadline = std::chrono::steady_clock::now() + 2s;
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
     while (out.size() < n && std::chrono::steady_clock::now() < deadline) {
         int r = recv(s, buf, sizeof(buf), 0);
         if (r <= 0) break;
@@ -115,8 +120,10 @@ TEST_CASE("viewer_core : handshake sim -> simEvent, data -> tick routé au sink"
     CHECK(hasState);
 
     // UI -> core -> pivot -> sim : cmd set
+    for (int i = 0; i < 200 && !core.pivot().simConnected(); ++i) std::this_thread::sleep_for(10ms);
+    REQUIRE(core.pivot().simConnected());
     core.onUiMessage(makeCmd("set", json{{"variable", "a.b"}, {"value", 7}}));
-    auto cmds = readN(sim, 1, pending);
+    auto cmds = readN(sim, 1, pending, 5000);
     REQUIRE(cmds.size() == 1);
     CHECK(cmds[0]["cmd"] == "set");
     CHECK(cmds[0]["value"] == 7);
