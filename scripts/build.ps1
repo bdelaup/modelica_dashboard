@@ -9,7 +9,6 @@ Write-Host "== [1/6] configure =="
 # SDK WebView2 via NuGet (une seule fois suffit ; mis en cache sinon)
 if (-not (Test-Path "$ROOT\.nuget\Microsoft.Web.WebView2\build\native\include\WebView2.h")) {
     nuget install Microsoft.Web.WebView2 -ExcludeVersion -OutputDirectory "$ROOT\.nuget" -NonInteractive
-    nuget install Microsoft.Windows.ImplementationLibrary -ExcludeVersion -OutputDirectory "$ROOT\.nuget" -NonInteractive
 }
 cmake -S $ROOT -B "$ROOT\build" -DCMAKE_BUILD_TYPE=Release -DWebView2_DIR="$ROOT\.nuget\Microsoft.Web.WebView2"
 

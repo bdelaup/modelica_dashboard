@@ -76,17 +76,5 @@ if(WIN32)
     target_include_directories(viewer PRIVATE src/cpp "${WV2_INCLUDE}")
     target_link_directories(viewer PRIVATE "${WV2_LIBDIR}")
     target_link_libraries(viewer PRIVATE WebView2LoaderStatic.lib) # lien statique : exe autonome (L2)
-    # WIL (Windows Implementation Library) pour les callbacks WebView2
-    find_package(Microsoft.Windows.ImplementationLibrary QUIET)
-    if(NOT Microsoft.Windows.ImplementationLibrary_FOUND)
-        # fallback : WIL header-only depuis le NuGet Microsoft.Windows.ImplementationLibrary
-        file(GLOB WIL_CANDIDATES "${CMAKE_SOURCE_DIR}/.nuget/Microsoft.Windows.ImplementationLibrary*/build/native/include")
-        foreach(wcand ${WIL_CANDIDATES})
-            set(WIL_DIR "${wcand}")
-        endforeach()
-        if(NOT EXISTS "${WIL_DIR}/wil/com.h")
-            message(FATAL_ERROR "WIL introuvable : installer Microsoft.Windows.ImplementationLibrary (nuget)")
-        endif()
-        target_include_directories(viewer PRIVATE "${WIL_DIR}")
-    endif()
+    # WIL n'est plus requis : webview_host.cpp utilise WRL pur (ComPtr).
 endif()
