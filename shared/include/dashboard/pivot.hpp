@@ -5,12 +5,9 @@
 
 #include "dashboard/protocol.hpp"
 
-#if defined(_WIN32)
-#include <winsock2.h>
-using dashboard_socket_t = SOCKET;
-#else
+// Type socket sans inclure winsock2.h dans un header public (conflit avec windows.h) :
+// on passe par un entier ; le .cpp caste vers SOCKET.
 using dashboard_socket_t = int;
-#endif
 
 #include <atomic>
 #include <functional>
