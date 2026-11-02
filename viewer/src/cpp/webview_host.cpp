@@ -11,6 +11,8 @@
 
 namespace dashboard {
 
+ICoreWebView2Environment* g_wvEnv = nullptr;
+
 struct WebViewHost::Impl {
     Microsoft::WRL::ComPtr<ICoreWebView2> webview;
     Microsoft::WRL::ComPtr<ICoreWebView2Controller> controller;
@@ -24,7 +26,6 @@ namespace {
 
 // Pivot partagé avec le shell : créé dans create(), exposé pour onWebMessage.
 ViewerCore* g_core = nullptr;
-ICoreWebView2Environment* g_wvEnv = nullptr;
 
 LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_DESTROY) { PostQuitMessage(0); return 0; }
@@ -154,7 +155,6 @@ void WebViewHost::registerAppProtocol() {
                 // réponse 200 avec le bon content-type
                 args->get_Request(&req);
                 // CreateWebResourceResponse est sur l'environment ; on passe par le controller du host via global
-                extern ICoreWebView2Environment* g_wvEnv;
                 if (g_wvEnv) {
                     g_wvEnv->CreateWebResourceResponse(stream, 200, L"OK",
                         (std::wstring(L"Content-Type: ") + contentTypeFor(path)).c_str(), &resp);
