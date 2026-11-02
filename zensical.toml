@@ -20,6 +20,7 @@ nav = [
   { "Guide du contributeur" = "contributeur.md" },
   { "Note de POC binding" = "poc-binding-runtime.md" },
   { "ADR" = "adr/index.md" },
+  { "Choix A4b" = "adr/0000-choix-a4b.md" },
 ]
 
 [project.theme]
