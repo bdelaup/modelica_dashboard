@@ -2,7 +2,7 @@
 
 **Projet** : environnement de tableaux de bord interactifs pour OpenModelica (exécution temps réel + supervision externe)
 **Version** : 1.0
-**Statut** : décisions tranchées avec le demandeur — document de référence pour l'implémentation
+**Statut** : architecture **A4b retenue et mergée** (PR #3, commit `63e1fef`, 2026-11-01 — voir [ADR-0000](adr/0000-choix-a4b.md)) — document de référence pour l'implémentation
 **Références** : [Spécification de besoins](besoin.md) (EF/ENF), [Options techniques](option_technique.md), [Options d'architecture](options_archtecture.md) (A4b retenue), [ADR](adr/) (décisions actées)
 
 ---

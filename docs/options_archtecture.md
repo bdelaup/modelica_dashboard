@@ -113,5 +113,5 @@ Ces axes de [option_technique.md](option_technique.md) restent ouverts et seront
 
 ## 5. Prochaines étapes
 
-1. Sélectionner l'architecture (ou les architectures) à creuser.
-2. Pour chaque choix retenu, trancher les axes transversaux de la section 4, un par un, en s'appuyant sur les exigences du [besoin](besoin.md).
+1. ~~Sélectionner l'architecture (ou les architectures) à creuser.~~ **Acté : A4b retenue** — voir [ADR-0000](adr/0000-choix-a4b.md) et [spécification technique](spec_technique.md), mergées via la PR #3 (commit `63e1fef`, 2026-11-01).
+2. Pour chaque choix retenu, trancher les axes transversaux de la section 4, un par un, en s'appuyant sur les exigences du [besoin](besoin.md). **Acté pour A4b** : voir le tableau D1–D25 et les ADR 0001–0012 de la [spécification technique](spec_technique.md).
