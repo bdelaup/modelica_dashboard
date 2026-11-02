@@ -57,8 +57,13 @@ int main(int argc, char** argv) {
     {
         STARTUPINFOA si{}; si.cb = sizeof(si);
         std::string cmdline = wcmd;
-        if (CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi)) {
+        si.dwFlags = STARTF_USESTDHANDLES;
+        si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+        si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
             rc = 0; // sera remplacé par le exit code après WaitForSingleObject
+        } else {
+            std::printf("ECHEC CreateProcessA err=%lu cmd=%s\n", GetLastError(), cmdline.c_str());
         }
     }
 #else
