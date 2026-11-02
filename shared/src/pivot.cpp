@@ -98,14 +98,18 @@ void Pivot::stop() {
         closeSocket(listenFd_);
         listenFd_ = -1;
     }
-    if (clientFd_ != -1 && clientFd_ != kInvalidSocket) {
+    // fermer le socket client AVANT le join : réveille recv() dans clientLoop
+    {
+        std::lock_guard<std::mutex> lk(sendMutex_);
+        if (clientFd_ != -1 && clientFd_ != kInvalidSocket) {
 #if defined(_WIN32)
-        shutdown(clientFd_, SD_BOTH);
+            shutdown(static_cast<socket_t>(clientFd_), SD_BOTH);
 #else
-        shutdown(clientFd_, SHUT_RDWR);
+            shutdown(static_cast<socket_t>(clientFd_), SHUT_RDWR);
 #endif
-        closeSocket(clientFd_);
-        clientFd_ = -1;
+            closeSocket(static_cast<socket_t>(clientFd_));
+            clientFd_ = -1;
+        }
     }
     connected_ = false;
     if (serverThread_.joinable()) serverThread_.join();
