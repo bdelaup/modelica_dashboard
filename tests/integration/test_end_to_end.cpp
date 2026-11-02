@@ -32,6 +32,7 @@ static int failures = 0;
 int main(int argc, char** argv) {
     // argv[1] = chemin du harness (dashboard_harness)
     std::string harness = argc > 1 ? argv[1] : "./dashboard_harness";
+    if (const char* env = std::getenv("DASHBOARD_HARNESS")) harness = env;
 
     std::mutex mtx;
     std::vector<json> ticks;

@@ -10,7 +10,13 @@ target_link_libraries(test_end_to_end PRIVATE dashboard_shared)
 
 enable_testing()
 # Le harness C (modelica/csrc) doit être buildé d'abord (build.ps1 s'en charge).
-add_test(NAME end_to_end COMMAND test_end_to_end $<TARGET_FILE:dashboard_harness>)
+if(WIN32)
+    add_test(NAME end_to_end
+        COMMAND ${CMAKE_COMMAND} -E env "DASHBOARD_HARNESS=$<TARGET_FILE:dashboard_harness>"
+                $<TARGET_FILE:test_end_to_end>)
+else()
+    add_test(NAME end_to_end COMMAND test_end_to_end $<TARGET_FILE:dashboard_harness>)
+endif()
 
 add_executable(bench_framing bench_framing.cpp)
 target_link_libraries(bench_framing PRIVATE dashboard_shared)
