@@ -139,7 +139,7 @@ DASHBOARD_API int dashboard_client_connect(const char* variablesCsv, const char*
     DWORD tv = 5000;
     setsockopt(g_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 #else
-    struct timeval tv{5, 0};
+    struct timeval tv; tv.tv_sec = 5; tv.tv_usec = 0;
     setsockopt(g_sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 #endif
     char buf[65536];
