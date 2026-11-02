@@ -12,7 +12,7 @@ cmake -S "$ROOT" -B "$ROOT/build" -DCMAKE_BUILD_TYPE=Release
 echo "== [2/6] build (shared + modelica/csrc + tests) =="
 cmake --build "$ROOT/build" -j
 
-echo "== [3/6] tests unitaires C++ (CTest : shared_tests + intégration) =="
+echo "== [3/6] tests C++ (CTest : shared, viewer_core, intégration, E2E headless, benchmark framing) =="
 DASHBOARD_REPO_ROOT="$ROOT" ctest --test-dir "$ROOT/build" --output-on-failure
 
 echo "== [4/6] tests JS du viewer (node --test) =="
@@ -26,5 +26,6 @@ mkdir -p "$ROOT/dist"
 cp "$ROOT/build/shared/shared_tests" "$ROOT/dist/" 2>/dev/null || true
 cp "$ROOT/build/tests/integration/test_end_to_end" "$ROOT/dist/" 2>/dev/null || true
 cp "$ROOT/build/modelica/csrc/dashboard_harness" "$ROOT/dist/" 2>/dev/null || true
+cp "$ROOT/build/viewer/viewer_headless" "$ROOT/dist/" 2>/dev/null || true
 if [ -f "$ROOT/build/viewer/viewer.exe" ]; then cp "$ROOT/build/viewer/viewer.exe" "$ROOT/dist/"; fi
 echo "BUILD OK — artefacts dans dist/"

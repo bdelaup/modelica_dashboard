@@ -1,31 +1,48 @@
 cmake_minimum_required(VERSION 3.20)
-# viewer.exe — Windows uniquement en V1 (D1) : C++/Win32 + WebView2 (D16).
-# Buildé uniquement sur Windows (racine : if(WIN32)). Les ressources web embarquées
-# sont dans src/web ; draw.io statique dans third_party/drawio (D34).
+# viewer — deux shells au-dessus de viewer_core (logique commune, sans WebView2) :
+#   - Windows V1 (D1/D16) : viewer.exe Win32 + WebView2 (src/cpp)
+#   - Partout (Linux/macOS/CI, portage tests) : viewer_headless, shell stdio NDJSON (src/headless)
 project(dashboard_viewer LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include(CTest) # définit BUILD_TESTING=ON par défaut
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../shared ${CMAKE_CURRENT_BINARY_DIR}/shared)
+if(NOT TARGET dashboard_shared)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../shared ${CMAKE_CURRENT_BINARY_DIR}/shared)
+endif()
 
-find_package(WebView2 REQUIRED) # NuGet Microsoft.Web.WebView2, via vcpkg ou package CI
-
-# Ressources embarquées (IHM app:// + draw.io) compilées dans l'exe (D9)
-file(GLOB_RECURSE WEB_ASSETS CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/web/*.js
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/web/*.html
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/web/*.css
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/web/i18n/*
+# --- viewer_core : logique commune, testable sans WebView2 ---
+add_library(viewer_core STATIC
+    src/core/viewer_core.cpp
 )
+target_include_directories(viewer_core PUBLIC src/core)
+target_link_libraries(viewer_core PUBLIC dashboard_shared)
 
-add_executable(viewer WIN32
-    src/cpp/main.cpp
-    src/cpp/webview_host.cpp
-    src/cpp/webview_host.hpp
-    src/cpp/resources.rc
-)
-target_link_libraries(viewer PRIVATE dashboard_shared WebView2::WebView2)
-target_include_directories(viewer PRIVATE src/cpp)
-# Génère resources.h avec les assets embarqués (généré au build par cmake)
-target_compile_definitions(viewer PRIVATE DASHBOARD_EMBED_WEB=1)
+# --- Shell headless (portable) ---
+add_executable(viewer_headless src/headless/main.cpp)
+target_link_libraries(viewer_headless PRIVATE viewer_core)
+
+# --- Tests du core (Catch2, CTest) ---
+if(BUILD_TESTING)
+    add_executable(viewer_core_tests
+        tests/test_viewer_core.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../shared/third_party/catch2/catch_amalgamated.cpp
+    )
+    target_link_libraries(viewer_core_tests PRIVATE viewer_core)
+    target_include_directories(viewer_core_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../shared/third_party/catch2)
+    add_test(NAME viewer_core_tests COMMAND viewer_core_tests)
+endif()
+
+# --- Shell Win32/WebView2 : Windows uniquement (D1) ---
+if(WIN32)
+    find_package(WebView2 REQUIRED) # NuGet Microsoft.Web.WebView2
+    add_executable(viewer WIN32
+        src/cpp/main.cpp
+        src/cpp/webview_host.cpp
+        src/cpp/webview_host.hpp
+    )
+    target_link_libraries(viewer PRIVATE viewer_core WebView2::WebView2)
+    target_include_directories(viewer PRIVATE src/cpp)
+endif()

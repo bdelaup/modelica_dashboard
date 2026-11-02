@@ -7,10 +7,11 @@
 
 ## 1. Prérequis (poste Windows, V1)
 
-- Visual Studio 2022 (Desktop C++, workload CMake) ou MSVC + CMake ≥ 3.28
+- **Linux/macOS (portage tests)** : g++/clang + CMake ≥ 3.20, Node LTS, Python 3 — build `shared/`, `modelica/csrc/`, `viewer_core` et le shell `viewer_headless` (stdio NDJSON), tous les tests CTest (dont E2E headless + benchmark framing 1000 var × 100 Hz)
+- **Windows V1 (livrable)** : Visual Studio 2022 (Desktop C++, workload CMake) ou MSVC + CMake ≥ 3.28, en plus du pack ci-dessus
 - WebView2 runtime (présent par défaut sur Windows 10/11)
 - Node.js LTS (tests de la logique JS du viewer)
-- OpenModelica **v1.27.1** (D27) avec `omc` dans le `PATH` (tests d'intégration)
+- OpenModelica **v1.27.1** (D27) avec `omc` dans le `PATH` (tests d'intégration OM, Windows)
 - Python 3 (scripts de test d'intégration)
 
 ## 2. Arborescence (à créer au fil du dev)
@@ -20,7 +21,10 @@ modelica_dashboard/
 ├── docs/                  # Zensical (ce dossier)
 ├── viewer/                # binaire C++/Win32 : pivot embarqué + WebView2 + IHM embarquée (app://) + draw.io embarqué
 │   ├── CMakeLists.txt
-│   ├── src/cpp/           # pivot (serveur loopback), hôte WebView2, pont natif, iframe éditeur
+│   ├── src/core/          # viewer_core : pivot embarqué + routage UI<->pivot (sans WebView2)
+│   ├── src/cpp/           # shell Windows : hôte WebView2, pont natif, iframe éditeur (D30)
+│   ├── src/headless/      # shell portable : stdio NDJSON (Linux/CI, tests E2E)
+│   ├── tests/             # tests Catch2 du viewer_core
 │   ├── src/web/           # bibliothèque JS du viewer (testable en Node) + assets IHM embarqués
 │   └── third_party/       # draw.io v32.3.0 (build statique webapp), nlohmann/json, Catch2
 ├── modelica/              # package Modelica Dashboard + fonction C externe (DLL)
@@ -45,9 +49,9 @@ Séquence exacte (ADR-0008, D18) :
 1. build de chaque composant (`cmake --build` dans `shared/`, `viewer/`, `modelica/csrc/`)
 2. tests unitaires C++ : `ctest` (Catch2 v3, D33)
 3. tests unitaires JS : `node --test` dans `viewer/src/web/`
-4. tests d'intégration : modèle de démo compilé par `omc`, flux réel sur `127.0.0.1:51234` (handshake, data, commandes, modes auto/manuel, EF-B4/EF-V6)
+4. tests d'intégration : flux réel sur `127.0.0.1:51234` (harness C + E2E headless `viewer_headless` en process réel : handshake, data, commandes, EF-B4/EF-V6) + benchmark framing (1000 var × 100 Hz, ADR-0003)
 5. tests de contrat (golden-file) : `tests/contract/`
-6. packaging de `viewer.exe`
+6. packaging (`viewer.exe` sur Windows ; `viewer_headless` + `libDashboardExternal.so` sur Linux)
 
 Le POC du cœur risqué (D28 : binding par nom, commandes, temps réel) est le premier incrément de `modelica/csrc/` + `tests/integration/`.
 

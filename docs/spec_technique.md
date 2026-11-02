@@ -197,7 +197,10 @@ modelica_dashboard/
 ├── docs/                  # Zensical : besoin, options, spec_technique, contributeur, protocole, utilisateur, adr/
 ├── viewer/                # binaire C++/Win32 : pivot embarqué + WebView2 + IHM embarquée (app://) + draw.io self-hosté
 │   ├── CMakeLists.txt     # build propre du composant
-│   ├── src/cpp/           # pivot (serveur loopback), hôte WebView2, pont natif, iframe éditeur
+│   ├── src/core/          # viewer_core : pivot embarqué + routage UI<->pivot (sans WebView2)
+│   ├── src/cpp/           # shell Windows : hôte WebView2, pont natif, iframe éditeur (D30)
+│   ├── src/headless/      # shell portable : stdio NDJSON (Linux/CI, E2E) — D42
+│   ├── tests/             # tests Catch2 du viewer_core
 │   ├── src/web/           # bibliothèque JS du viewer (testable en Node) + assets IHM embarqués
 │   └── third_party/       # draw.io build statique embarqué
 ├── modelica/              # package Modelica Dashboard + fonction C externe (DLL)

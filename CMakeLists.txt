@@ -10,10 +10,10 @@ set(CMAKE_C_STANDARD 11)
 add_subdirectory(shared)
 add_subdirectory(modelica/csrc)
 
-# viewer/ n'est buildé que sur Windows (WebView2) — voir viewer/CMakeLists.txt.
-if(WIN32)
-    add_subdirectory(viewer)
-endif()
+# viewer/ : viewer_core + viewer_headless partout (portage Linux/CI) ;
+# le shell viewer.exe Win32/WebView2 n'est compilé que sur Windows (D1).
+add_subdirectory(viewer)
 
+include(CTest)
 enable_testing()
 add_subdirectory(tests/integration)

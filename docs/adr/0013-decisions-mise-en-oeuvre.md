@@ -26,6 +26,7 @@ La spec technique A4b (ADR-0001…0012) laissait des points ouverts bloquants po
 | D38 | DLL C externe | Nom `DashboardExternal.dll`, fonctions exportées préfixées `dashboard_` (contrat C détaillé au POC, D28) |
 | D39 | `showPort` (EF-B2) | Mécanisme visé : `Placement(visible=showPort)` sur le connecteur du bloc — **à valider au POC** ; si OMEdit ne l'évalue pas sans plugin, repli = bloc à port masqué par défaut, `showPort` lu uniquement par le pivot pour la liste des variables |
 | D40 | Message d'état sim→pivot | Ajout d'un message `state` sim→pivot (absent du contrat initial) pour alimenter `simState` côté viewer |
+| D42 | Portage Linux (tests) | Cœur portable : `viewer_core` (logique sans WebView2) + shell `viewer_headless` stdio NDJSON ; `viewer.exe` WebView2 reste Windows-only (D1). CI : job `linux` (ubuntu) + job `windows`. Benchmark framing JSON validé à 1000 var × 100 Hz → pas de repli binaire en V1 (ADR-0003) |
 | D41 | Ordre de dev | (1) `protocole.md` + contrat `shared/` → (2) socle `shared/` + tests de contrat + `scripts/build.ps1` + CI → (3) POC canal/binding **en parallèle** → (4) pivot C++ → (5) bibliothèque Modelica + DLL → (6) viewer WebView2 + logique JS → (7) éditeur iframe |
 
 ## Conséquences

@@ -55,6 +55,7 @@ public:
     void setModelVariables(std::vector<std::string> variables);
 
     const std::string& lastError() const { return lastError_; }
+    std::vector<std::string> modelVariables() const { return modelVariables_; }
 
 private:
     void serverLoop();

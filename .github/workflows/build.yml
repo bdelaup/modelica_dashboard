@@ -7,47 +7,67 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    runs-on: windows-latest # D1 : Windows V1, WebView2 natif (ADR-0001/0008)
+  # Job Linux (portage tests) : shared + csrc + viewer_core + viewer_headless,
+  # tous les tests CTest (dont E2E headless + benchmark framing), tests JS, contrat.
+  linux:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
-      - name: Configure CMake
+      - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build -j
+      - name: CTest (unitaires + viewer_core + intégration + E2E headless + benchmark)
+        env:
+          DASHBOARD_REPO_ROOT: ${{ github.workspace }}
+        run: ctest --test-dir build --output-on-failure
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+      - name: Tests JS du viewer
+        working-directory: viewer/src/web
+        run: npm test --silent
+      - name: Tests de contrat (golden-file)
+        run: python3 tests/contract/test_contract.py
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: modelica-dashboard-linux-${{ github.sha }}
+          path: |
+            build/viewer/viewer_headless
+            build/modelica/csrc/libDashboardExternal.so
 
-      - name: Build (shared + csrc + viewer.exe + tests)
+  # Job Windows V1 (D1) : en plus, viewer.exe Win32/WebView2 + DLL + packaging + release.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build (inclut viewer.exe WebView2)
         run: cmake --build build -j --config Release
-
-      - name: Tests unitaires C++ + intégration (CTest)
+      - name: CTest
         env:
           DASHBOARD_REPO_ROOT: ${{ github.workspace }}
         run: ctest --test-dir build --output-on-failure --build-config Release
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
-      - name: Tests JS du viewer (node --test)
+      - name: Tests JS du viewer
         working-directory: viewer/src/web
         run: npm test --silent
-
-      - name: Tests de contrat (golden-file)
+      - name: Tests de contrat
         run: python tests/contract/test_contract.py
-
       - name: Package
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item build/viewer/Release/viewer.exe dist/
           Copy-Item build/modelica/csrc/Release/DashboardExternal.dll dist/
           Copy-Item -Recurse modelica/Dashboard dist/Dashboard
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v6
         with:
-          name: modelica-dashboard-${{ github.sha }}
+          name: modelica-dashboard-windows-${{ github.sha }}
           path: dist/
-
-      # Release GitHub sur tag v*.*.* (ADR-0007/0008)
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
