@@ -52,7 +52,10 @@ int main(int argc, char** argv) {
     int rc = -1;
 #if defined(_WIN32)
     // Windows : lance le harness en arrière-plan (il fera connect + outputs + input après 500 ms)
-    std::string wcmd = "cmd.exe /c \"" + harness + "\" motor.speed,motor.on,motor.gear \"\" 500";
+    // chemins CMake sur Windows : backslashes -> forward slashes pour cmd.exe
+    std::string h = harness;
+    for (auto& c : h) if (c == '\\') c = '/';
+    std::string wcmd = "cmd.exe /c \"" + h + "\" motor.speed,motor.on,motor.gear \"\" 500";
     PROCESS_INFORMATION pi{};
     {
         STARTUPINFOA si{}; si.cb = sizeof(si);
