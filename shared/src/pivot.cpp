@@ -109,7 +109,10 @@ void Pivot::stop() {
     }
     connected_ = false;
     if (serverThread_.joinable()) serverThread_.join();
-    if (clientThread_.joinable()) clientThread_.join();
+    {
+        std::lock_guard<std::mutex> lk(threadMutex_);
+        if (clientThread_.joinable()) clientThread_.join();
+    }
 }
 
 void Pivot::serverLoop() {
@@ -130,11 +133,15 @@ void Pivot::serverLoop() {
             if (events_.onProtocolError) events_.onProtocolError(e);
             continue;
         }
-        clientFd_ = static_cast<int>(c);
-        setNoDelay(c);
-        connected_ = true;
-        pendingBuffer_.clear();
-        clientThread_ = std::thread([this] { clientLoop(); });
+        {
+            std::lock_guard<std::mutex> lk(threadMutex_);
+            if (clientThread_.joinable()) clientThread_.join(); // finit l'ancienne boucle client
+            clientFd_ = static_cast<int>(c);
+            setNoDelay(c);
+            connected_ = true;
+            pendingBuffer_.clear();
+            clientThread_ = std::thread([this] { clientLoop(); });
+        }
     }
 }
 

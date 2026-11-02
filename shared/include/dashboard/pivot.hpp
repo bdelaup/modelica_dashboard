@@ -73,6 +73,7 @@ private:
     std::atomic<bool> connected_{false};
     PivotEvents events_;
     std::mutex sendMutex_;
+    std::mutex threadMutex_;
     std::mutex errMutex_;
     std::string lastError_;
     std::vector<std::string> modelVariables_;

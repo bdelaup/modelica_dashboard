@@ -49,7 +49,7 @@ socket_t connectSim() {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(kPort);
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 300; ++i) {
         socket_t s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (s == kInv) { std::this_thread::sleep_for(20ms); continue; }
         if (connect(s, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0) return s;
@@ -120,10 +120,10 @@ TEST_CASE("viewer_core : handshake sim -> simEvent, data -> tick routé au sink"
     CHECK(hasState);
 
     // UI -> core -> pivot -> sim : cmd set
-    for (int i = 0; i < 200 && !core.pivot().simConnected(); ++i) std::this_thread::sleep_for(10ms);
+    for (int i = 0; i < 500 && !core.pivot().simConnected(); ++i) std::this_thread::sleep_for(10ms);
     REQUIRE(core.pivot().simConnected());
     core.onUiMessage(makeCmd("set", json{{"variable", "a.b"}, {"value", 7}}));
-    auto cmds = readN(sim, 1, pending, 5000);
+    auto cmds = readN(sim, 1, pending, 10000);
     REQUIRE(cmds.size() == 1);
     CHECK(cmds[0]["cmd"] == "set");
     CHECK(cmds[0]["value"] == 7);

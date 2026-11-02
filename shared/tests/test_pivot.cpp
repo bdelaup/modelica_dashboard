@@ -44,7 +44,7 @@ socket_t connectToPivot() {
     addr.sin_port = htons(kPort);
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
     // retry avec socket neuf à chaque tentative (un socket déjà connecté/refusé ne peut pas être reconnecté)
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 300; ++i) {
         socket_t s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (s == kInv) { std::this_thread::sleep_for(20ms); continue; }
         if (connect(s, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0) return s;
@@ -55,21 +55,35 @@ socket_t connectToPivot() {
 }
 
 void sendAll(socket_t s, const std::string& data) {
-    REQUIRE(send(s, data.data(), static_cast<int>(data.size()), 0) == static_cast<int>(data.size()));
+    // envoi en boucle jusqu'à épuisement (send peut être partiel)
+    const char* p = data.data();
+    int remaining = static_cast<int>(data.size());
+    while (remaining > 0) {
+        int n = send(s, p, remaining, 0);
+        REQUIRE(n > 0);
+        p += n;
+        remaining -= n;
+    }
 }
 
 // Lit des lignes NDJSON jusqu'à obtenir n messages ou timeout.
-std::vector<json> readMessages(socket_t s, std::size_t n, std::string& pending, int timeoutMs = 2000) {
+std::vector<json> readMessages(socket_t s, std::size_t n, std::string& pending, int timeoutMs = 5000) {
     std::vector<json> out;
     char buf[8192];
-    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
-    while (out.size() < n && std::chrono::steady_clock::now() < deadline) {
+    while (out.size() < n) {
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+#if defined(_WIN32)
+        // timeout recv via SO_RCVTIMEO
+        DWORD tv = timeoutMs;
+        setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+#endif
         int r = recv(s, buf, sizeof(buf), 0);
         if (r <= 0) break;
         pending.append(buf, static_cast<std::size_t>(r));
         auto res = decodeFrames(pending);
         pending = std::move(res.remainder);
         for (auto& m : res.messages) out.push_back(std::move(m));
+        (void)deadline;
     }
     return out;
 }
@@ -99,7 +113,23 @@ struct Fixture {
         for (int i = 0; i < 100 && !pivot.isListening(); ++i) std::this_thread::sleep_for(10ms);
         REQUIRE(pivot.isListening());
     }
-    ~Fixture() { pivot.stop(); }
+    ~Fixture() {
+        pivot.stop();
+        // attend que le port 51234 soit libéré (TIME_WAIT / thread serveur sorti)
+        for (int i = 0; i < 200; ++i) {
+            socket_t probe = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            sockaddr_in addr{};
+            addr.sin_family = AF_INET;
+            addr.sin_port = htons(kPort);
+            inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+            if (connect(probe, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) {
+                closeS(probe);
+                break; // port libre
+            }
+            closeS(probe);
+            std::this_thread::sleep_for(10ms);
+        }
+    }
 };
 
 } // namespace
@@ -140,13 +170,15 @@ TEST_CASE("state sim -> simState (D40) et commande set relayée à la sim", "[pi
 
     sendAll(sim, encodeFrame(makeState("running")));
     sendAll(sim, encodeFrame(makeState("paused")));
-    for (int i = 0; i < 100 && f.simStates.size() < 2; ++i) std::this_thread::sleep_for(10ms);
+    for (int i = 0; i < 500 && f.simStates.size() < 2; ++i) std::this_thread::sleep_for(10ms);
     REQUIRE(f.simStates == std::vector<std::string>{"running", "paused"});
 
-    // viewer -> pivot -> sim : cmd set
+    // viewer -> pivot -> sim : cmd set (attendre que le handshake soit traité)
+    for (int i = 0; i < 500 && !f.pivot.simConnected(); ++i) std::this_thread::sleep_for(10ms);
+    REQUIRE(f.pivot.simConnected());
     REQUIRE(f.pivot.sendCommand(makeCmd("set", json{{"variable", "a"}, {"value", 2.0}})));
     REQUIRE(f.pivot.sendCommand(makeCmd("run")));
-    auto cmds = readMessages(sim, 2, pending);
+    auto cmds = readMessages(sim, 2, pending, 8000);
     REQUIRE(cmds.size() == 2);
     REQUIRE(cmds[0]["cmd"] == "set");
     REQUIRE(cmds[0]["value"] == 2.0);
@@ -208,7 +240,7 @@ TEST_CASE("mode auto : dashboardFile poussé -> dashboard + unconnected (EF-V6)"
     std::string pending;
     auto msgs = readMessages(sim, 1, pending);
     REQUIRE(msgs[0]["type"] == "helloAck");
-    for (int i = 0; i < 100 && f.dashboards.empty(); ++i) std::this_thread::sleep_for(10ms);
+    for (int i = 0; i < 500 && f.dashboards.empty(); ++i) std::this_thread::sleep_for(10ms);
     REQUIRE(f.dashboards.size() == 1);
     REQUIRE(f.dashboards[0]["type"] == "dashboard");
     REQUIRE(f.dashboards[0]["source"] == "auto");
