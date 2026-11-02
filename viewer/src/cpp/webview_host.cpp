@@ -11,6 +11,14 @@
 
 namespace dashboard {
 
+struct WebViewHost::Impl {
+    Microsoft::WRL::ComPtr<ICoreWebView2> webview;
+    Microsoft::WRL::ComPtr<ICoreWebView2Controller> controller;
+    std::unique_ptr<ViewerCore> core;
+};
+
+WebViewHost::~WebViewHost() = default;
+
 namespace {
 
 // Pivot partagé avec le shell : créé dans create(), exposé pour onWebMessage.
@@ -174,13 +182,5 @@ void WebViewHost::shutdown() {
     if (impl_ && impl_->controller) impl_->controller->Close();
     g_core = nullptr;
 }
-
-struct WebViewHost::Impl {
-    Microsoft::WRL::ComPtr<ICoreWebView2> webview;
-    Microsoft::WRL::ComPtr<ICoreWebView2Controller> controller;
-    std::unique_ptr<ViewerCore> core;
-};
-
-WebViewHost::~WebViewHost() = default;
 
 } // namespace dashboard
