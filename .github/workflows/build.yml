@@ -44,8 +44,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Installer le SDK WebView2 (NuGet)
         run: |
-          nuget install Microsoft.Web.WebView2 -OutputDirectory .nuget -NonInteractive
-          nuget install Microsoft.Windows.ImplementationLibrary -OutputDirectory .nuget -NonInteractive
+          nuget install Microsoft.Web.WebView2 -ExcludeVersion -OutputDirectory .nuget -NonInteractive
+          nuget install Microsoft.Windows.ImplementationLibrary -ExcludeVersion -OutputDirectory .nuget -NonInteractive
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DWebView2_DIR=${{ github.workspace }}/.nuget/Microsoft.Web.WebView2
       - name: Build (inclut viewer.exe WebView2)
