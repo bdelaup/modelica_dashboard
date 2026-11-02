@@ -94,7 +94,11 @@ DASHBOARD_API int dashboard_client_connect(const char* variablesCsv, const char*
     addr.sin_port = htons(DASH_PORT);
     inet_pton(AF_INET, DASH_HOST, &addr.sin_addr);
     if (connect(g_sock, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
-        fprintf(stderr, "connect err=%d (WSA=%d)\n", errno, WSAGetLastError());
+#if defined(_WIN32)
+        fprintf(stderr, "connect WSA err=%d\n", WSAGetLastError());
+#else
+        fprintf(stderr, "connect errno=%d\n", errno);
+#endif
         sock_close(g_sock); g_sock = SOCK_INV; return -2;
     }
     int one = 1;
