@@ -17,6 +17,7 @@ struct WebViewHost::Impl {
     std::unique_ptr<ViewerCore> core;
 };
 
+WebViewHost::WebViewHost() = default;
 WebViewHost::~WebViewHost() = default;
 
 namespace {

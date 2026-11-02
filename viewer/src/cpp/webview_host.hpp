@@ -12,8 +12,8 @@ namespace dashboard {
 
 class WebViewHost {
 public:
-    WebViewHost() = default;
-    ~WebViewHost(); // défini dans le .cpp (Impl complet)
+    WebViewHost();
+    ~WebViewHost();
     // Crée la fenêtre Win32 + le WebView2, charge app://index.html.
     // Retourne false si WebView2 runtime absent.
     bool create(HINSTANCE hInstance, int nCmdShow);
