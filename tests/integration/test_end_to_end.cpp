@@ -39,10 +39,14 @@ int main() {
 
     // Lance le client sim (harness) dans un thread du même process
     std::atomic<double> throttle{0.25};
+    std::atomic<int> simRc{-1};
     std::thread simThread([&] {
         double v = 0.25;
-        harness_run("motor.speed,motor.on,motor.gear,motor.throttle", "", 500, &v);
+        int r = harness_run("motor.speed,motor.on,motor.gear,motor.throttle", "", 500, &v);
         throttle = v;
+        simRc = r;
+        std::printf("harness rc=%d throttle=%g\n", r, v);
+        std::fflush(stdout);
     });
 
     // attend la connexion puis envoie cmd set motor.throttle = 0.9 (viewer -> pivot -> sim)
@@ -52,6 +56,7 @@ int main() {
     CHECK(pivot.sendCommand(makeCmd("set", json{{"variable", "motor.throttle"}, {"value", 0.9}})));
 
     simThread.join();
+    std::printf("après join: simRc=%d\n", simRc.load());
 
     // attend les 3 ticks et le state
     {
