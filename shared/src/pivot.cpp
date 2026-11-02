@@ -118,7 +118,11 @@ void Pivot::stop() {
 void Pivot::serverLoop() {
     while (running_) {
         sockaddr_in peer{};
+#if defined(_WIN32)
+        int len = sizeof(peer);
+#else
         socklen_t len = sizeof(peer);
+#endif
         socket_t c = accept(listenFd_, reinterpret_cast<sockaddr*>(&peer), &len);
         if (c == kInvalidSocket) {
             if (!running_) break;
@@ -140,13 +144,12 @@ void Pivot::serverLoop() {
             setNoDelay(c);
             connected_ = true;
             pendingBuffer_.clear();
-            clientThread_ = std::thread([this] { clientLoop(); });
+            clientThread_ = std::thread([this, c] { clientLoop(c); });
         }
     }
 }
 
-void Pivot::clientLoop() {
-    socket_t c = static_cast<socket_t>(clientFd_);
+void Pivot::clientLoop(socket_t c) {
     char buf[64 * 1024];
     bool handshaken = false;
     while (running_ && connected_) {
@@ -193,16 +196,14 @@ void Pivot::clientLoop() {
     }
 disconnect:
     {
-        std::lock_guard<std::mutex> lk(sendMutex_);
-        if (clientFd_ != -1 && clientFd_ != kInvalidSocket) {
 #if defined(_WIN32)
-            shutdown(static_cast<socket_t>(clientFd_), SD_BOTH);
+        shutdown(c, SD_BOTH);
 #else
-            shutdown(static_cast<socket_t>(clientFd_), SHUT_RDWR);
+        shutdown(c, SHUT_RDWR);
 #endif
-            closeSocket(static_cast<socket_t>(clientFd_));
-            clientFd_ = -1;
-        }
+        closeSocket(c);
+        std::lock_guard<std::mutex> lk(sendMutex_);
+        clientFd_ = -1;
     }
     connected_ = false;
     if (events_.onSimDisconnected) events_.onSimDisconnected();

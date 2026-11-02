@@ -59,7 +59,7 @@ public:
 
 private:
     void serverLoop();
-    void clientLoop();
+    void clientLoop(int c); // c = socket client (évite la course sur clientFd_)
     void handleMessage(const json& msg);
     bool sendJson(const json& msg);
     void setError(const json& e) { std::lock_guard<std::mutex> lk(errMutex_); lastError_ = e.dump(); if (events_.onProtocolError) events_.onProtocolError(e); }
