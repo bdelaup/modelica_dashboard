@@ -56,12 +56,6 @@ const wchar_t* contentTypeFor(const std::wstring& path) {
 
 } // namespace
 
-struct WebViewHost::Impl {
-    Microsoft::WRL::ComPtr<ICoreWebView2> webview;
-    Microsoft::WRL::ComPtr<ICoreWebView2Controller> controller;
-    std::unique_ptr<ViewerCore> core;
-};
-
 bool WebViewHost::create(HINSTANCE hInstance, int nCmdShow) {
     impl_ = std::make_unique<Impl>();
     WNDCLASSA wc{};
@@ -181,6 +175,12 @@ void WebViewHost::shutdown() {
     g_core = nullptr;
 }
 
-dashboard::WebViewHost::~WebViewHost() = default;
+struct WebViewHost::Impl {
+    Microsoft::WRL::ComPtr<ICoreWebView2> webview;
+    Microsoft::WRL::ComPtr<ICoreWebView2Controller> controller;
+    std::unique_ptr<ViewerCore> core;
+};
+
+WebViewHost::~WebViewHost() = default;
 
 } // namespace dashboard
