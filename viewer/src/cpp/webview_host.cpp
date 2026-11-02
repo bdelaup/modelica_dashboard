@@ -181,6 +181,6 @@ void WebViewHost::shutdown() {
     g_core = nullptr;
 }
 
-WebViewHost::~WebViewHost() = default;
+dashboard::WebViewHost::~WebViewHost() = default;
 
 } // namespace dashboard
