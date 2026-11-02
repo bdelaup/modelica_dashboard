@@ -68,10 +68,15 @@ static int send_all(const char* data, int len) {
 }
 
 static int send_line(const char* json) {
-    char buf[DASH_MAX_FRAME];
-    int n = snprintf(buf, sizeof(buf), "%s\n", json);
-    if (n <= 0 || (size_t)n >= sizeof(buf)) return -1;
-    return send_all(buf, n);
+    /* D35 : trame max 1 MiB — allouée sur le tas, pas la pile :
+       1 MiB de stack fait overflow sur un thread Windows (stack défaut 1 MiB). */
+    char* buf = (char*)malloc(DASH_MAX_FRAME);
+    if (!buf) return -1;
+    int n = snprintf(buf, DASH_MAX_FRAME, "%s\n", json);
+    int rc = -1;
+    if (n > 0 && (size_t)n < DASH_MAX_FRAME) rc = send_all(buf, n);
+    free(buf);
+    return rc;
 }
 
 /*Petit échappement JSON pour les noms (pas de guillemets/backslash attendus, D23 : taille max seule en V1)*/
