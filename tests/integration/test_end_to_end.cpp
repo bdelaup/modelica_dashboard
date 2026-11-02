@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     int rc = -1;
 #if defined(_WIN32)
     // Windows : lance le harness en arrière-plan (il fera connect + outputs + input après 500 ms)
-    std::string wcmd = "\"" + harness + "\" \"motor.speed,motor.on,motor.gear\" \"\" 500";
+    std::string wcmd = "\"" + harness + "\" motor.speed,motor.on,motor.gear \"\" 500";
     PROCESS_INFORMATION pi{};
     {
         STARTUPINFOA si{}; si.cb = sizeof(si);
