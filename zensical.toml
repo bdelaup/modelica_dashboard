@@ -18,6 +18,7 @@ nav = [
   { "Spécification technique (A4b)" = "spec_technique.md" },
   { "Protocole du canal" = "protocole.md" },
   { "Guide du contributeur" = "contributeur.md" },
+  { "Note de POC binding" = "poc-binding-runtime.md" },
   { "ADR" = "adr/index.md" },
 ]
 

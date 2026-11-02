@@ -16,4 +16,5 @@ Une fiche par décision tranchée. Les décisions de mise en œuvre de la sessio
 | [0010](0010-i18n-logs.md) | I18n FR+EN dès la V1 ; logs fichier par composant + journal UI |
 | [0011](0011-securite.md) | Sécurité : loopback + validation de taille max uniquement (risque accepté) |
 | [0012](0012-perf.md) | Performance : cible 100–1000 var × 10–100 Hz, backpressure « pivot pousse / viewer écrase » |
+| [0014](0014-binding-runtime-detail.md) | Détail du binding par nom : accès via `threadData->localRoots[LOCAL_ROOT_SIMULATION_DATA]` → `data->modelData->realVarsData[]` → `data->realVars[id]` (OM v1.27.1) |
 | [0013](0013-decisions-mise-en-oeuvre.md) | Décisions de mise en œuvre (port 51234, OM v1.27.1, draw.io v32.3.0, éditeur iframe WebView2, stack C++20/Catch2/nlohmann, widgets V1, versions v0, POC parallèle, ordre de dev) |
