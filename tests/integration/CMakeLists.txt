@@ -5,18 +5,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 
-add_executable(test_end_to_end test_end_to_end.cpp)
+add_executable(test_end_to_end test_end_to_end.cpp ${CMAKE_SOURCE_DIR}/modelica/csrc/harness.c ${CMAKE_SOURCE_DIR}/modelica/csrc/dashboard_client.c)
+target_compile_definitions(test_end_to_end PRIVATE DASHBOARD_HARNESS_NO_MAIN)
 target_link_libraries(test_end_to_end PRIVATE dashboard_shared)
+target_include_directories(test_end_to_end PRIVATE ${CMAKE_SOURCE_DIR}/modelica/csrc)
 
 enable_testing()
 # Le harness C (modelica/csrc) doit être buildé d'abord (build.ps1 s'en charge).
-if(WIN32)
-    add_test(NAME end_to_end
-        COMMAND ${CMAKE_COMMAND} -E env "DASHBOARD_HARNESS=$<TARGET_FILE:dashboard_harness>"
-                $<TARGET_FILE:test_end_to_end>)
-else()
-    add_test(NAME end_to_end COMMAND test_end_to_end $<TARGET_FILE:dashboard_harness>)
-endif()
+add_test(NAME end_to_end COMMAND test_end_to_end)
 
 add_executable(bench_framing bench_framing.cpp)
 target_link_libraries(bench_framing PRIVATE dashboard_shared)

@@ -1,25 +1,18 @@
 // Test d'intégration de bout en bout (ADR-0008) :
-// vrai pivot (shared/) sur 127.0.0.1:51234 + vrai client C (modelica/csrc harness)
-// qui joue la simulation : handshake, data -> tick, state, cmd set -> input (EF-B4).
+// vrai pivot (shared/) sur 127.0.0.1:51234 + client C (modelica/csrc) appelé
+// IN-PROCESS dans un thread (pas de process externe -> robuste Windows/Linux) :
+// handshake, data -> tick, state, cmd set -> input (EF-B4/D15).
+extern "C" int harness_run(const char* variablesCsv, const char* dashFile, int delaiInputMs, double* outThrottle);
+
 #include "dashboard/pivot.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <cstdio>
-#include <cstdlib>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
-
-#if defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <process.h>
-#else
-#include <unistd.h>
-#include <sys/wait.h>
-#endif
 
 using namespace dashboard;
 using namespace std::chrono_literals;
@@ -29,11 +22,7 @@ static int failures = 0;
     std::printf("ECHEC ligne %d : %s\n", __LINE__, #cond); ++failures; } \
     else { std::printf("ok : %s\n", #cond); } } while (0)
 
-int main(int argc, char** argv) {
-    // argv[1] = chemin du harness (dashboard_harness)
-    std::string harness = argc > 1 ? argv[1] : "./dashboard_harness";
-    if (const char* env = std::getenv("DASHBOARD_HARNESS")) harness = env;
-
+int main() {
     std::mutex mtx;
     std::vector<json> ticks;
     std::vector<std::string> states;
@@ -48,91 +37,46 @@ int main(int argc, char** argv) {
     if (!pivot.start(std::move(ev))) { std::printf("ECHEC: pivot.start\n"); return 1; }
     for (int i = 0; i < 100 && !pivot.isListening(); ++i) std::this_thread::sleep_for(10ms);
 
-    // Lance le harness (client sim) : handshake + 3 outputs + state running
-    int rc = -1;
-#if defined(_WIN32)
-    // Windows : lance le harness en arrière-plan (il fera connect + outputs + input après 500 ms)
-    // chemins CMake sur Windows : backslashes -> forward slashes pour cmd.exe
-    std::string h = harness;
-    for (auto& c : h) if (c == '\\') c = '/';
-    std::string wcmd = "cmd.exe /c \"" + h + "\" motor.speed,motor.on,motor.gear \"\" 500";
-    PROCESS_INFORMATION pi{};
-    {
-        STARTUPINFOA si{}; si.cb = sizeof(si);
-        std::string cmdline = wcmd;
-        si.dwFlags = STARTF_USESTDHANDLES;
-        si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-        si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-        if (CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
-            rc = 0; // sera remplacé par le exit code après WaitForSingleObject
-        } else {
-            std::printf("ECHEC CreateProcessA err=%lu cmd=%s\n", GetLastError(), cmdline.c_str());
-        }
-    }
-#else
-    // délai de 500 ms : le test envoie un cmd set pendant ce délai (EF-B4/D15)
-    std::string cmd = harness + " \"motor.speed,motor.on,motor.gear\" \"\" 500 & sleep 0.2; wait";
-    (void)cmd;
-    pid_t pid = fork();
-    if (pid == 0) {
-        execl(harness.c_str(), harness.c_str(), "motor.speed,motor.on,motor.gear", "", "500", (char*)nullptr);
-        _exit(127);
-    }
-#endif
+    // Lance le client sim (harness) dans un thread du même process
+    std::atomic<double> throttle{0.25};
+    std::thread simThread([&] {
+        double v = 0.25;
+        harness_run("motor.speed,motor.on,motor.gear,motor.throttle", "", 500, &v);
+        throttle = v;
+    });
+
     // attend la connexion puis envoie cmd set motor.throttle = 0.9 (viewer -> pivot -> sim)
     for (int i = 0; i < 200 && connected == 0; ++i) std::this_thread::sleep_for(10ms);
     CHECK(connected == 1);
-    std::this_thread::sleep_for(200ms); // laisse le harness poser ses outputs et entrer en attente
+    std::this_thread::sleep_for(200ms);
     CHECK(pivot.sendCommand(makeCmd("set", json{{"variable", "motor.throttle"}, {"value", 0.9}})));
-    std::this_thread::sleep_for(50ms);
-#if defined(_WIN32)
-    WaitForSingleObject(pi.hProcess, 15000);
-    DWORD code = 0;
-    GetExitCodeProcess(pi.hProcess, &code);
-    rc = (int)code;
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-#else
-    int status = 0;
-    waitpid(pid, &status, 0);
-    rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-#endif
-    CHECK(rc == 0);
+
+    simThread.join();
 
     // attend les 3 ticks et le state
-    for (int i = 0; i < 200; ++i) {
-        {
-            std::lock_guard<std::mutex> lk(mtx);
-            if (ticks.size() >= 3 && states.size() >= 1) break;
-        }
-        std::this_thread::sleep_for(10ms);
-    }
     {
         std::lock_guard<std::mutex> lk(mtx);
         CHECK(ticks.size() == 3);
-        if (ticks.size() == 3) {
-            // chaque output est un data batch ; le harness envoie 3 messages séparés
-            bool foundSpeed = false, foundOn = false, foundGear = false;
-            for (const auto& t : ticks) {
-                if (t["values"].contains("motor.speed") && t["values"]["motor.speed"] == 12.5) foundSpeed = true;
-                if (t["values"].contains("motor.on") && t["values"]["motor.on"] == true) foundOn = true;
-                if (t["values"].contains("motor.gear") && t["values"]["motor.gear"] == 3) foundGear = true;
-            }
-            CHECK(foundSpeed);
-            CHECK(foundOn);
-            CHECK(foundGear);
+        bool foundSpeed = false, foundOn = false, foundGear = false;
+        for (const auto& t : ticks) {
+            if (t["values"].contains("motor.speed") && t["values"]["motor.speed"] == 12.5) foundSpeed = true;
+            if (t["values"].contains("motor.on") && t["values"]["motor.on"] == true) foundOn = true;
+            if (t["values"].contains("motor.gear") && t["values"]["motor.gear"] == 3) foundGear = true;
+        }
+        CHECK(foundSpeed);
+        CHECK(foundOn);
+        CHECK(foundGear);
+        if (!ticks.empty()) {
             CHECK(ticks[0]["type"] == "tick");
             CHECK(ticks[0].contains("ratio"));
         }
-        CHECK(states.size() >= 1 && states[0] == "running");
+        CHECK(states.size() >= 1);
+        if (!states.empty()) CHECK(states[0] == "running");
     }
-    CHECK(connected == 1);
+    // EF-B4/D15 : le set a été appliqué côté sim (0.9 et non le défaut 0.25)
+    CHECK(throttle == 0.9);
     for (int i = 0; i < 100 && disconnected == 0; ++i) std::this_thread::sleep_for(10ms);
     CHECK(disconnected == 1);
-
-    // EF-B4 : commande set depuis le viewer -> appliquée côté sim (test du harness en deux temps)
-    // Ici on vérifie juste que sendCommand fonctionne avec une sim connectée :
-    // (le harness s'est déjà déconnecté, donc on attend false)
     CHECK(!pivot.sendCommand(makeCmd("run")));
 
     pivot.stop();

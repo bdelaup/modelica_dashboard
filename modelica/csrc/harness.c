@@ -1,6 +1,6 @@
 // Harness de test : joue le rôle de la simulation sans OpenModelica.
-// Construit une mini "DLL" (ou exe de test) qui appelle dashboard_client_*
-// contre un vrai pivot (shared/) sur 127.0.0.1:51234.
+// Exporte harness_run() (appelé in-process par le test d'intégration) et garde
+// un main() CLI pour un lancement manuel.
 #include "dashboard_client.h"
 #include <stdio.h>
 #include <string.h>
@@ -14,23 +14,31 @@ static void sleep_ms(int ms) { Sleep(ms); }
 static void sleep_ms(int ms) { usleep(ms * 1000); }
 #endif
 
+// Joue la sim : connect, 3 outputs, attend delaiInputMs (le test envoie un set
+// entre-temps), lit l'input (EF-B4), state running, déconnecte.
+// Retourne la valeur lue pour motor.throttle via *outThrottle.
+int harness_run(const char* variablesCsv, const char* dashFile, int delaiInputMs, double* outThrottle) {
+    int rc = dashboard_client_connect(variablesCsv, dashFile);
+    if (rc != 0) { fprintf(stderr, "connect rc=%d\n", rc); return 1; }
+    dashboard_client_output_real("motor.speed", 12.5, dashFile);
+    dashboard_client_output_boolean("motor.on", 1, dashFile);
+    dashboard_client_output_integer("motor.gear", 3, dashFile);
+    if (delaiInputMs > 0) sleep_ms(delaiInputMs);
+    double v = dashboard_client_input_real("motor.throttle", 0.25, dashFile);
+    if (outThrottle) *outThrottle = v;
+    dashboard_client_state("running");
+    dashboard_client_disconnect();
+    return 0;
+}
+
+#ifndef DASHBOARD_HARNESS_NO_MAIN
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "usage: harness <variablesCsv> [dashboardFile] [delaiInputMs]\n"); return 2; }
     const char* dashFile = argc > 2 ? argv[2] : "";
     int delai = argc > 3 ? atoi(argv[3]) : 0;
-    int rc = dashboard_client_connect(argv[1], dashFile);
-    if (rc != 0) { fprintf(stderr, "connect rc=%d\n", rc); return 1; }
-    printf("connected\n");
-    fflush(stdout);
-    dashboard_client_output_real("motor.speed", 12.5, dashFile);
-    dashboard_client_output_boolean("motor.on", 1, dashFile);
-    dashboard_client_output_integer("motor.gear", 3, dashFile);
-    if (delai > 0) sleep_ms(delai); /* laisse le test envoyer un cmd set entre-temps */
-    double v = dashboard_client_input_real("motor.throttle", 0.25, dashFile);
+    double v = 0;
+    int rc = harness_run(argv[1], dashFile, delai, &v);
     printf("input motor.throttle = %g\n", v);
-    fflush(stdout);
-    dashboard_client_state("running");
-    dashboard_client_disconnect();
-    printf("done\n");
-    return 0;
+    return rc;
 }
+#endif
