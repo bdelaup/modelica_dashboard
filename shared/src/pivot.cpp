@@ -149,7 +149,7 @@ void Pivot::serverLoop() {
     }
 }
 
-void Pivot::clientLoop(socket_t c) {
+void Pivot::clientLoop(dashboard_socket_t c) {
     char buf[64 * 1024];
     bool handshaken = false;
     while (running_ && connected_) {
