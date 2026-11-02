@@ -36,21 +36,38 @@ if(BUILD_TESTING)
 endif()
 
 # --- Shell Win32/WebView2 : Windows uniquement (D1) ---
-# Le SDK vient du NuGet Microsoft.Web.WebView2 (installé en CI/local via
-# scripts/build.ps1 ou nuget install ; passer -DWebView2_DIR=<nuget>/build/native)
+# Le SDK vient du NuGet Microsoft.Web.Web.WebView2 (pas de config CMake : lien direct
+# headers + WebView2LoaderStatic.lib). Installer via scripts/build.ps1 ou :
+#   nuget install Microsoft.Web.WebView2 -OutputDirectory .nuget
+# puis -DWebView2_DIR=$PWD/.nuget/Microsoft.Web.WebView2  (défaut : .nuget/...)
 if(WIN32)
-    find_package(WebView2 QUIET)
-    if(NOT WebView2_FOUND)
+    if(NOT DEFINED WebView2_DIR)
+        set(WebView2_DIR "${CMAKE_SOURCE_DIR}/.nuget/Microsoft.Web.WebView2")
+    endif()
+    set(WV2_INCLUDE "${WebView2_DIR}/build/native/include")
+    set(WV2_LIBDIR "${WebView2_DIR}/build/native/${CMAKE_GENERATOR_PLATFORM}")
+    if(NOT EXISTS "${WV2_INCLUDE}/WebView2.h")
         message(FATAL_ERROR
-            "SDK WebView2 introuvable. Installer le NuGet Microsoft.Web.WebView2, ex. :\n"
+            "SDK WebView2 introuvable (${WV2_INCLUDE}/WebView2.h). Installer le NuGet :\n"
             "  nuget install Microsoft.Web.WebView2 -OutputDirectory .nuget\n"
-            "  cmake -S . -B build -DWebView2_DIR=$PWD/.nuget/Microsoft.Web.WebView2/build/native")
+            "  cmake -S . -B build -DWebView2_DIR=$PWD/.nuget/Microsoft.Web.WebView2")
     endif()
     add_executable(viewer WIN32
         src/cpp/main.cpp
         src/cpp/webview_host.cpp
         src/cpp/webview_host.hpp
     )
-    target_link_libraries(viewer PRIVATE viewer_core WebView2::WebView2)
-    target_include_directories(viewer PRIVATE src/cpp)
+    target_link_libraries(viewer PRIVATE viewer_core)
+    target_include_directories(viewer PRIVATE src/cpp "${WV2_INCLUDE}")
+    target_link_directories(viewer PRIVATE "${WV2_LIBDIR}")
+    target_link_libraries(viewer PRIVATE WebView2LoaderStatic.lib) # lien statique : exe autonome (L2)
+    # WIL (Windows Implementation Library) pour les callbacks WebView2
+    find_package(Microsoft.Windows.ImplementationLibrary QUIET)
+    if(NOT Microsoft.Windows.ImplementationLibrary_FOUND)
+        # fallback : WIL header-only depuis le NuGet Microsoft.Windows.ImplementationLibrary
+        set(WIL_DIR "${CMAKE_SOURCE_DIR}/.nuget/Microsoft.Windows.ImplementationLibrary/build/native/include")
+        if(EXISTS "${WIL_DIR}/wil/com.h")
+            target_include_directories(viewer PRIVATE "${WIL_DIR}")
+        endif()
+    endif()
 endif()
