@@ -96,7 +96,7 @@ bool WebViewHost::create(HINSTANCE hInstance, int nCmdShow) {
     HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(
         nullptr, nullptr, nullptr,
         Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-            [this](HRESULT hrEnv, ICoreWebView2Environment* env) -> HRESULT {
+            [this, sinkRaw](HRESULT hrEnv, ICoreWebView2Environment* env) -> HRESULT {
                 if (FAILED(hrEnv) || !env) return hrEnv;
                 g_wvEnv = env;
                 return env->CreateCoreWebView2Controller(hwnd_,
