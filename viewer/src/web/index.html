@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>modelica_dashboard — viewer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <span id="sim-state" class="badge">—</span>
+  <span id="sim-time">0.00 s</span>
+  <span id="ratio" title="ratio">ratio 1.00</span>
+  <button id="btn-run">Run</button>
+  <button id="btn-run-to-end">Run jusqu'à la fin</button>
+  <button id="btn-pause">Pause</button>
+  <button id="btn-stop">Stop</button>
+  <button id="btn-reload">Recharger</button>
+  <button id="btn-edit">Éditer</button>
+  <button id="btn-open">Ouvrir un dashboard…</button>
+  <select id="lang"><option value="fr">FR</option><option value="en">EN</option></select>
+</header>
+<main>
+  <section id="board"></section>
+  <aside id="journal"><h2>Journal</h2><ul id="log"></ul></aside>
+</main>
+<section id="editor-pane" hidden>
+  <iframe id="editor-frame" src="app://drawio/webapp/index.html?embed=1&proto=json&configure=1"></iframe>
+</section>
+<script type="module" src="app.js"></script>
+</body>
+</html>
