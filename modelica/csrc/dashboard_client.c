@@ -6,6 +6,7 @@
 // l'adresse de la variable du modèle compilé et la valeur y est écrite directement.
 #include "dashboard_client.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
