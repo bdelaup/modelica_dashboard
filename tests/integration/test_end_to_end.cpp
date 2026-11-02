@@ -46,8 +46,18 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 100 && !pivot.isListening(); ++i) std::this_thread::sleep_for(10ms);
 
     // Lance le harness (client sim) : handshake + 3 outputs + state running
+    int rc = -1;
 #if defined(_WIN32)
-    int rc = _spawnl(_P_WAIT, harness.c_str(), harness.c_str(), "motor.speed,motor.on,motor.gear", "", "500", nullptr);
+    // Windows : lance le harness en arrière-plan (il fera connect + outputs + input après 500 ms)
+    std::string wcmd = "\"" + harness + "\" \"motor.speed,motor.on,motor.gear\" \"\" 500";
+    PROCESS_INFORMATION pi{};
+    {
+        STARTUPINFOA si{}; si.cb = sizeof(si);
+        std::string cmdline = wcmd;
+        if (CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi)) {
+            rc = 0; // sera remplacé par le exit code après WaitForSingleObject
+        }
+    }
 #else
     // délai de 500 ms : le test envoie un cmd set pendant ce délai (EF-B4/D15)
     std::string cmd = harness + " \"motor.speed,motor.on,motor.gear\" \"\" 500 & sleep 0.2; wait";
@@ -64,10 +74,17 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_for(200ms); // laisse le harness poser ses outputs et entrer en attente
     CHECK(pivot.sendCommand(makeCmd("set", json{{"variable", "motor.throttle"}, {"value", 0.9}})));
     std::this_thread::sleep_for(50ms);
-#if !defined(_WIN32)
+#if defined(_WIN32)
+    WaitForSingleObject(pi.hProcess, 15000);
+    DWORD code = 0;
+    GetExitCodeProcess(pi.hProcess, &code);
+    rc = (int)code;
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+#else
     int status = 0;
     waitpid(pid, &status, 0);
-    int rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+    rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 #endif
     CHECK(rc == 0);
 

@@ -17,9 +17,28 @@ import time
 PORT = 51234
 
 
-def readline_json(fd, buf, timeout=5.0):
-    """Lit une ligne JSON sur le fd brut (os.read) ; buf est le reste non consommé."""
+def readline_json(pipe, buf, timeout=5.0):
+    """Lit une ligne JSON sur un pipe texte (Windows : pas de select sur pipe -> readline bloquant
+    avec timeout via thread, ou lecture directe). buf = reste non consommé."""
+    import threading
+    if sys.platform == "win32":
+        # Windows : select ne marche pas sur les pipes ; on lit en thread avec timeout
+        result = {}
+        def _read():
+            try:
+                line = pipe.readline()
+                result["line"] = line
+            except Exception as e:
+                result["err"] = e
+        t = threading.Thread(target=_read, daemon=True)
+        t.start()
+        t.join(timeout)
+        if "line" not in result:
+            return None
+        line = result["line"]
+        return json.loads(line) if line.strip() else None
     import select
+    fd = pipe.fileno()
     while b"\n" not in buf[0]:
         r, _, _ = select.select([fd], [], [], timeout)
         if not r:
@@ -77,12 +96,12 @@ def main():
         # sorties du viewer (stdout) : simEvent, tick, simState
         out = []
         buf = [b""]
-        fd = proc.stdout.fileno()
+        pipe = proc.stdout
         deadline = time.time() + 3
         while time.time() < deadline and not (any(m["type"] == "tick" for m in out)
                                                and any(m["type"] == "simState" for m in out)
                                                and any(m["type"] == "simEvent" for m in out)):
-            m = readline_json(fd, buf, timeout=max(0.1, deadline - time.time()))
+            m = readline_json(pipe, buf, timeout=max(0.1, deadline - time.time()))
             if m:
                 out.append(m)
         types = [m["type"] for m in out]

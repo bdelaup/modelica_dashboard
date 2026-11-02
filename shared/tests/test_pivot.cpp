@@ -7,6 +7,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <thread>
@@ -187,7 +188,7 @@ TEST_CASE("mode auto : dashboardFile poussé -> dashboard + unconnected (EF-V6)"
     dash.name = "T";
     dash.widgets.push_back({"w1", "gauge", "motor.speed", "V", 0, 0, 100, 60});
     dash.widgets.push_back({"w2", "button", "ghost.var", "G", 0, 80, 100, 40});
-    std::string path = "/tmp/pivot_test_dashboard.drawio";
+    std::string path = (std::filesystem::temp_directory_path() / "pivot_test_dashboard.drawio").string();
     {
         std::ofstream o(path);
         o << serializeDashboardFile(dash);

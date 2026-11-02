@@ -4,6 +4,7 @@
 #include "viewer_core.hpp"
 #include "dashboard/dashboard_file.hpp"
 
+#include <filesystem>
 #include <fstream>
 
 #include <atomic>
@@ -144,7 +145,7 @@ TEST_CASE("viewer_core : loadDashboard via message UI (mode manuel)", "[viewer_c
     dash.name = "M";
     dash.widgets.push_back({"w1", "gauge", "motor.speed", "V", 0, 0, 100, 60});
     dash.widgets.push_back({"w2", "button", "ghost", "G", 0, 80, 100, 40});
-    std::string path = "/tmp/viewer_core_test.drawio";
+    std::string path = (std::filesystem::temp_directory_path() / "viewer_core_test.drawio").string();
     { std::ofstream o(path); o << serializeDashboardFile(dash); }
 
     core.onUiMessage(json{{"type", "loadDashboard"}, {"path", path}});
