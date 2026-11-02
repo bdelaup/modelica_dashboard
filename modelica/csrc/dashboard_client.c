@@ -18,7 +18,7 @@
 typedef SOCKET sock_t;
 #define SOCK_INV INVALID_SOCKET
 static int sock_close(sock_t s) { return closesocket(s); }
-static void wsa_init(void) { static int done = 0; if (!done) { WSADATA d; WSAStartup(MAKEWORD(2,2), &d); done = 1; } }
+static void wsa_init(void) { static int done = 0; if (!done) { WSADATA d; int r = WSAStartup(MAKEWORD(2,2), &d); if (r != 0) fprintf(stderr, "WSAStartup err=%d\n", r); done = 1; } }
 #else
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -93,7 +93,10 @@ DASHBOARD_API int dashboard_client_connect(const char* variablesCsv, const char*
     addr.sin_family = AF_INET;
     addr.sin_port = htons(DASH_PORT);
     inet_pton(AF_INET, DASH_HOST, &addr.sin_addr);
-    if (connect(g_sock, (struct sockaddr*)&addr, sizeof(addr)) != 0) { sock_close(g_sock); g_sock = SOCK_INV; return -2; }
+    if (connect(g_sock, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
+        fprintf(stderr, "connect err=%d (WSA=%d)\n", errno, WSAGetLastError());
+        sock_close(g_sock); g_sock = SOCK_INV; return -2;
+    }
     int one = 1;
     setsockopt(g_sock, IPPROTO_TCP, TCP_NODELAY, (const char*)&one, sizeof(one));
 
