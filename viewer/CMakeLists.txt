@@ -36,8 +36,16 @@ if(BUILD_TESTING)
 endif()
 
 # --- Shell Win32/WebView2 : Windows uniquement (D1) ---
+# Le SDK vient du NuGet Microsoft.Web.WebView2 (installé en CI/local via
+# scripts/build.ps1 ou nuget install ; passer -DWebView2_DIR=<nuget>/build/native)
 if(WIN32)
-    find_package(WebView2 REQUIRED) # NuGet Microsoft.Web.WebView2
+    find_package(WebView2 QUIET)
+    if(NOT WebView2_FOUND)
+        message(FATAL_ERROR
+            "SDK WebView2 introuvable. Installer le NuGet Microsoft.Web.WebView2, ex. :\n"
+            "  nuget install Microsoft.Web.WebView2 -OutputDirectory .nuget\n"
+            "  cmake -S . -B build -DWebView2_DIR=$PWD/.nuget/Microsoft.Web.WebView2/build/native")
+    endif()
     add_executable(viewer WIN32
         src/cpp/main.cpp
         src/cpp/webview_host.cpp

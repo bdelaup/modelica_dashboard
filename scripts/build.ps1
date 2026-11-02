@@ -6,7 +6,11 @@ $ROOT = Split-Path -Parent $PSScriptRoot
 Set-Location $ROOT
 
 Write-Host "== [1/6] configure =="
-cmake -S $ROOT -B "$ROOT\build" -DCMAKE_BUILD_TYPE=Release
+# SDK WebView2 via NuGet (une seule fois suffit ; mis en cache sinon)
+if (-not (Test-Path "$ROOT\.nuget\Microsoft.Web.WebView2\build\native")) {
+    nuget install Microsoft.Web.WebView2 -OutputDirectory "$ROOT\.nuget" -NonInteractive
+}
+cmake -S $ROOT -B "$ROOT\build" -DCMAKE_BUILD_TYPE=Release -DWebView2_DIR="$ROOT\.nuget\Microsoft.Web.WebView2\build\native"
 
 Write-Host "== [2/6] build (shared + modelica/csrc + viewer.exe + tests) =="
 cmake --build "$ROOT\build" -j --config Release
