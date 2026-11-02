@@ -25,6 +25,7 @@ static void wsa_init(void) { static int done = 0; if (!done) { WSADATA d; int r 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <unistd.h>
 typedef int sock_t;
@@ -133,12 +134,19 @@ DASHBOARD_API int dashboard_client_connect(const char* variablesCsv, const char*
     }
     if (send_line(hello) != 0) { sock_close(g_sock); g_sock = SOCK_INV; return -3; }
 
-    /* attend helloAck (ou error) */
+    /* attend helloAck (ou error) avec timeout 5 s */
+#if defined(_WIN32)
+    DWORD tv = 5000;
+    setsockopt(g_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+#else
+    struct timeval tv{5, 0};
+    setsockopt(g_sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+#endif
     char buf[65536];
     int n = recv(g_sock, buf, sizeof(buf) - 1, 0);
-    if (n <= 0) { sock_close(g_sock); g_sock = SOCK_INV; return -4; }
+    if (n <= 0) { fprintf(stderr, "helloAck: recv n=%d\n", n); sock_close(g_sock); g_sock = SOCK_INV; g_connected = 0; return -4; }
     buf[n] = 0;
-    if (strstr(buf, "\"helloAck\"") == NULL) { sock_close(g_sock); g_sock = SOCK_INV; return -5; }
+    if (strstr(buf, "\"helloAck\"") == NULL) { fprintf(stderr, "helloAck absent: %s\n", buf); sock_close(g_sock); g_sock = SOCK_INV; g_connected = 0; return -5; }
     g_connected = 1;
     return 0;
 }
