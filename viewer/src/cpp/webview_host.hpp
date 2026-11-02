@@ -25,6 +25,7 @@ private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
     HWND hwnd_ = nullptr;
+    ~WebViewHost(); // défini dans le .cpp (Impl complet)
 };
 
 } // namespace dashboard

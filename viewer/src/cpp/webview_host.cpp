@@ -4,7 +4,8 @@
 #include "viewer_core.hpp"
 
 #include <windows.h>
-#include <shellapi.h>
+#include <shlwapi.h>
+#pragma comment(lib, "shlwapi.lib")
 #include <fstream>
 #include <sstream>
 
@@ -100,7 +101,7 @@ bool WebViewHost::create(HINSTANCE hInstance, int nCmdShow) {
                 g_wvEnv = env;
                 return env->CreateCoreWebView2Controller(hwnd_,
                     Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-                        [this](HRESULT hrC, ICoreWebView2Controller* c) -> HRESULT {
+                        [this, sinkRaw](HRESULT hrC, ICoreWebView2Controller* c) -> HRESULT {
                             if (FAILED(hrC) || !c) return hrC;
                             impl_->controller = c;
                             c->get_CoreWebView2(&impl_->webview);
@@ -179,5 +180,7 @@ void WebViewHost::shutdown() {
     if (impl_ && impl_->controller) impl_->controller->Close();
     g_core = nullptr;
 }
+
+WebViewHost::~WebViewHost() = default;
 
 } // namespace dashboard
