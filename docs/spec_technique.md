@@ -1,22 +1,23 @@
 # Spécification technique — modelica_dashboard (dashboard manager + navigateur)
 
 **Projet** : environnement de tableaux de bord interactifs pour OpenModelica (exécution temps réel + supervision externe)
-**Version** : 2.0 (2026-11-04)
-**Statut** : la v1.0 (architecture **A4b**, viewer.exe + WebView2 embarqué) est **remplacée par l'[ADR-0015](adr/0015-retour-navigateur-dashboard-manager.md)** (2026-11-04) : le **rendu et l'édition se font dans le navigateur du poste**, et le « pivot » s'appelle désormais le **dashboard manager** (processus autonome). Points ouverts soumis à validation : D45/D46 ci-dessous et ADR-0015. Document de référence pour l'implémentation.
+**Version** : 2.1 (2026-11-04)
+**Statut** : la v1.0 (architecture **A4b**, viewer.exe + WebView2 embarqué) est **remplacée par l'[ADR-0015](adr/0015-retour-navigateur-dashboard-manager.md)** (2026-11-04, **acté**) : le **rendu et l'édition se font dans le navigateur du poste**, et le « pivot » s'appelle désormais le **dashboard manager** (processus autonome). Points validés avec le demandeur le 2026-11-04 : port UI fixe `51235`, canal UI **SSE+POST**, livrable **Python embarqué (PyInstaller)**, `shared/` C++ maintenu en parallèle (D45–D47). Document de référence pour l'implémentation.
 **Références** : [Spécification de besoins](besoin.md) (EF/ENF), [Options techniques](option_technique.md), [Options d'architecture](options_archtecture.md) (variante de A2 retenue), [ADR](adr/) (décisions actées)
 
 ---
 
 ## 0. Principe de ce document
 
-Ce document spécifie l'architecture retenue : un **dashboard manager** (processus autonome) qui sert l'**UI web** (viewer temps réel + éditeur draw.io) au **navigateur du poste** en loopback, et échange avec la simulation via un canal socket dédié. Les blocs — bibliothèque Modelica, dashboard manager, navigateur — sont présentés à l'utilisateur de façon monolithique, mais **cloisonnés en modules** pour la maintenabilité et la testabilité. Toutes les interfaces entre composants sont décrites de façon exhaustive (§8).
+Ce document spécifie l'architecture retenue : un **dashboard manager** (processus autonome, développé en Python et packagé en exe) qui sert l'**UI web** (viewer temps réel + éditeur draw.io) au **navigateur du poste** en loopback, et échange avec la simulation via un canal socket dédié. Les blocs — bibliothèque Modelica, dashboard manager, navigateur — sont présentés à l'utilisateur de façon monolithique, mais **cloisonnés en modules** pour la maintenabilité et la testabilité. Toutes les interfaces entre composants sont décrites de façon exhaustive (§8).
 
-**Changements du 2026-11-04 (ADR-0015)** :
+**Changements du 2026-11-04 (ADR-0015, acté)** :
 
-- Suppression du moteur de rendu embarqué WebView2 : `viewer/`, `.nuget/`, `dist/`, `build/` (artefacts) et les tests associés sont supprimés ; `shared/` (protocole, parsing `.drawio`, pivot) et `modelica/` sont conservés.
+- Suppression du moteur de rendu embarqué WebView2 : `viewer/`, `.nuget/`, `dist/`, `build/` (artefacts) et les tests associés sont supprimés ; `shared/` (protocole, parsing `.drawio`, pivot loopback, C++) et `modelica/` sont conservés.
 - Le pivot devient le **dashboard manager**, processus autonome (P2 au lieu de P3 embarqué).
-- L'UI (viewer + éditeur) est servie par le manager en **HTTP/WebSocket sur `127.0.0.1:51235`** et ouverte dans le navigateur ; le seul autre port ouvert reste le canal sim `127.0.0.1:51234`.
-- Le canal sim ↔ manager et le modèle de messages du protocole sont **inchangés** (version 0 maintenue) ; seul le transport du segment manager ↔ UI change (pont WebView2 → WebSocket).
+- L'UI (viewer + éditeur) est servie par le manager en **HTTP + SSE/POST sur `127.0.0.1:51235`** et ouverte dans le navigateur ; le seul autre port ouvert reste le canal sim `127.0.0.1:51234`.
+- Le canal sim ↔ manager et le modèle de messages du protocole sont **inchangés** (version 0 maintenue) ; seul le transport du segment manager ↔ UI change (pont WebView2 → SSE/POST).
+- Livrable : script **Python embarqué (PyInstaller)** → exe autonome `dashboard_manager.exe`. Le C++ de `shared/` reste buildé et testé en parallèle (« on essaie de maintenir les deux pour voir »).
 
 Les décisions structurantes sont consignées sous forme d'[ADR](adr/) ; le tableau ci-dessous en est le résumé (les décisions modifiées par l'ADR-0015 sont marquées).
 
@@ -30,17 +31,17 @@ Les décisions structurantes sont consignées sous forme d'[ADR](adr/) ; le tabl
 | D6 | Éditeur | draw.io self-hosté, mode embed (`?embed=1&proto=json`), servi par le manager | [0004](adr/0004-editeur-drawio.md) |
 | D7 | Format du fichier dashboard | `.drawio` natif (XML mxGraphModel) | [0004](adr/0004-editeur-drawio.md) |
 | D8 | Rendu du viewer | R3 hybride : moteur draw.io pour la structure, canvas superposé pour courbes/jauges — dans le navigateur | [0004](adr/0004-editeur-drawio.md) |
-| D9 | Chargement de l'IHM | **HTTP/WebSocket loopback `127.0.0.1:51235` servie par le manager, ouverte dans le navigateur** *(modifié ADR-0015 : était ressources embarquées `app://` dans WebView2)* | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
+| D9 | Chargement de l'IHM | **HTTP + SSE/POST loopback `127.0.0.1:51235` servie par le manager, ouverte dans le navigateur** *(modifié ADR-0015 : était ressources embarquées `app://` dans WebView2)* | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
 | D10 | Lancement / pilotage | L'utilisateur lance le dashboard manager ; la sim est lancée depuis OMEdit ; boutons Run/Pause/Stop côté UI (navigateur) | [0002](adr/0002-pivot-embarque-port-fixe.md) |
 | D11 | Chargement du dashboard | Deux modes : auto (le modèle pousse le chemin du fichier en début de sim) ou manuel (chargé par l'utilisateur dans l'UI) | [0002](adr/0002-pivot-embarque-port-fixe.md) |
 | D12 | Fichier dashboard — qui écrit/lit | C2 — l'éditeur écrit (via le manager), l'UI lit (via le manager) | [0004](adr/0004-editeur-drawio.md) |
 | D13 | Rechargement entre deux runs (EF-E4) | Bouton **Recharger** manuel dans l'UI | [0002](adr/0002-pivot-embarque-port-fixe.md) |
 | D14 | Binding par nom (EF-I1) | API runtime du moteur de simulation, résolution à l'exécution | [0006](adr/0006-binding-runtime.md) |
 | D15 | Valeur par défaut (EF-B4) | `defaultValue` du bloc si jamais de valeur reçue, sinon dernière valeur reçue conservée | [0006](adr/0006-binding-runtime.md) |
-| D16 | Livrable manager | **Exe autonome unique `dashboard_manager.exe`, C++20, assets web embarqués, sans WebView2 (L2)** *(modifié ADR-0015)* | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
+| D16 | Livrable manager | **Exe autonome unique `dashboard_manager.exe` — Python embarqué (PyInstaller), assets web embarqués, sans WebView2** *(modifié ADR-0015, acté 2026-11-04)* | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
 | D17 | Distribution bibliothèque | Package Modelica standard dans les libraries OMEdit + DLL C externe | [0007](adr/0007-livraison.md) |
 | D18 | CI | GitHub Actions, jobs Linux (tests) + Windows (DLL + packaging) ; build + tests rejouables en local par le même script | [0008](adr/0008-ci-tests.md) |
-| D19 | Tests | Unitaires + intégration + contrat (golden-file) ; logique JS de l'UI en Node ; E2E manager via WebSocket ; **pas d'E2E navigateur réel en V1** *(modifié ADR-0015)* | [0008](adr/0008-ci-tests.md) |
+| D19 | Tests | Unitaires + intégration + contrat (golden-file) ; logique JS de l'UI en Node ; E2E manager via SSE/POST ; **pas d'E2E navigateur réel en V1** *(modifié ADR-0015)* | [0008](adr/0008-ci-tests.md) |
 | D20 | Versioning | SemVer produit + champ `version` dans le fichier et le protocole ; lecture de la version N-1 garantie | [0009](adr/0009-versioning.md) |
 | D21 | Langues UI | Français + anglais dès la V1, chaînes externalisées | [0010](adr/0010-i18n-logs.md) |
 | D22 | Logs | Fichier log par composant + journal dans l'UI (EF-V6) | [0010](adr/0010-i18n-logs.md) |
@@ -54,7 +55,7 @@ Les décisions structurantes sont consignées sous forme d'[ADR](adr/) ; le tabl
 | D30 | Mécanisme de l'éditeur | draw.io en **iframe de la page UI dans le navigateur**, servi par le manager en loopback, piloté par `postMessage` *(remplacé par ADR-0015 : était iframe dans le WebView2)* | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
 | D31 | Versions de départ | Produit v0.1.0, protocole `version: 0`, `dashboardVersion="0"` | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
 | D32 | Widgets V1 | `value`, `gauge`, `curve`, `button`, `slider`, `log` (text/image/table en V2) | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
-| D33 | Stack C++ | C++20 + CMake, nlohmann/json, Catch2 v3 (CTest), logique JS de l'UI testée en Node LTS | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D33 | Stack | Manager en **Python** (packagé PyInstaller, D47) ; `shared/` **C++20 + CMake** conservé et buildé en parallèle (nlohmann/json, Catch2 v3/CTest) *(modifié ADR-0015)* ; logique JS de l'UI testée en Node LTS | [0013](adr/0013-decisions-mise-en-oeuvre.md) / [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
 | D34 | draw.io embarqué | v32.3.0, build statique webapp embarqué dans le **manager** *(modifié ADR-0015 : était `viewer/third_party/`)* | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
 | D35 | Taille max de trame | 1 MiB par ligne NDJSON | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
 | D36 | Langue UI par défaut | Français (sélecteur FR/EN conservé) | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
@@ -62,13 +63,13 @@ Les décisions structurantes sont consignées sous forme d'[ADR](adr/) ; le tabl
 | D38 | DLL C externe | `DashboardExternal.dll`, exports préfixés `dashboard_` | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
 | D39 | `showPort` (EF-B2) | Visé : `Placement(visible=showPort)` ; à valider au POC | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
 | D40 | État sim→manager | Message `state` sim→manager (alimente `simState`) | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
-| D41 | Ordre de dev | protocole.md → socle shared/ + contrat + CI → POC parallèle → manager (canal + HTTP/WS) → biblio+DLL → UI web navigateur → éditeur *(modifié ADR-0015)* | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
-| D42 | Portage Linux (tests) | Cœur portable (shared/) + tests CTest sur Linux ; E2E via WebSocket du manager *(modifié ADR-0015 : remplace viewer_headless)* | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D41 | Ordre de dev | protocole.md → socle shared/ + contrat + CI → POC parallèle → manager Python (canal 51234 + HTTP/SSE 51235) → biblio+DLL → UI web navigateur → éditeur *(modifié ADR-0015)* | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
+| D42 | Portage Linux (tests) | Cœur C++ portable (shared/) + tests CTest sur Linux ; E2E manager via SSE/POST *(modifié ADR-0015 : remplace viewer_headless)* | [0013](adr/0013-decisions-mise-en-oeuvre.md) |
 | D43 | Moteur de rendu / édition | **Navigateur du poste** (suppression du WebView2 embarqué) | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
 | D44 | Nom du composant d'affichage | « pivot » renommé **dashboard manager** | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
-| D45 | Port UI | `127.0.0.1:51235` (HTTP statique + WebSocket) — **à valider** (vs port éphémère + URL imprimée) | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
-| D46 | Canal UI navigateur ↔ manager | WebSocket NDJSON sur le port UI (messages de `protocole.md` §7) — **à valider** | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
-| D47 | Livraison manager | `dashboard_manager.exe` autonome, assets web embarqués (L2), zéro install | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
+| D45 | Port UI | `127.0.0.1:51235` **fixe** (HTTP statique + SSE/POST) — **acté 2026-11-04** | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
+| D46 | Canal UI navigateur ↔ manager | **SSE** (manager→UI) + **POST** (UI→manager) sur le port UI, messages de `protocole.md` §7 — **acté 2026-11-04** | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
+| D47 | Livraison manager | Script **Python embarqué (PyInstaller)** → exe autonome `dashboard_manager.exe`, assets web embarqués, zéro install — **acté 2026-11-04** ; `shared/` C++ maintenu en parallèle | [0015](adr/0015-retour-navigateur-dashboard-manager.md) |
 
 ---
 
@@ -80,22 +81,22 @@ flowchart LR
         MO[modèle .mo] --> LIB[bibliothèque Modelica<br/>blocs + fonction C externe]
     end
     LIB -->|sockets 127.0.0.1:51234<br/>JSON newline-delimited| DM
-    subgraph EXE[processus autonome — dashboard_manager.exe]
-        DM[dashboard manager<br/>canal sim : serveur 127.0.0.1:51234<br/>UI : serveur HTTP/WebSocket 127.0.0.1:51235]
+    subgraph EXE[processus autonome — dashboard_manager.exe (Python embarqué)]
+        DM[dashboard manager<br/>canal sim : serveur 127.0.0.1:51234<br/>UI : serveur HTTP+SSE 127.0.0.1:51235]
         DM --> WEB[assets UI embarqués<br/>viewer + éditeur draw.io self-hosté]
     end
-    WEB -->|HTTP + WebSocket 127.0.0.1:51235| NAV[navigateur du poste<br/>rendu R3 hybride + édition draw.io embed]
-    NAV -. save .-> DM
+    WEB -->|HTTP + SSE 127.0.0.1:51235| NAV[navigateur du poste<br/>rendu R3 hybride + édition draw.io embed]
+    NAV -. save (POST) .-> DM
     DM -->|lit / pousse| F[(fichier .drawio<br/>à côté du .mo)]
 ```
 
 Flux de données :
 
-1. L'utilisateur lance `dashboard_manager.exe` : le canal sim écoute sur **127.0.0.1:51234** (D26) et l'UI est servie sur **http://127.0.0.1:51235** (D45, URL imprimée au démarrage ; option `--open` pour lancer le navigateur automatiquement).
-2. L'utilisateur ouvre l'URL dans son navigateur (D43).
+1. L'utilisateur lance `dashboard_manager.exe` : le canal sim écoute sur **127.0.0.1:51234** (D26) et l'UI est servie sur **http://127.0.0.1:51235** (D45 fixe, URL imprimée au démarrage ; option `--open` pour lancer le navigateur automatiquement).
+2. L'utilisateur ouvre l'URL dans son navigateur (D43) ; la page se connecte en **SSE** (D46).
 3. La simulation est lancée depuis OMEdit ; la fonction C externe se connecte au port fixe et s'identifie (handshake, §8.2).
 4. En mode **auto**, la sim pousse le chemin du fichier dashboard ; en mode **manuel**, l'utilisateur charge le dashboard dans l'UI.
-5. Pendant le run : la sim pousse les valeurs à chaque pas (sim → manager → navigateur) ; les actionneurs et commandes font le chemin inverse (navigateur → manager → sim).
+5. Pendant le run : la sim pousse les valeurs à chaque pas (sim → manager → navigateur, SSE) ; les actionneurs et commandes font le chemin inverse (navigateur → POST → manager → sim).
 6. Entre deux runs, l'utilisateur édite le dashboard dans draw.io (servi par le manager) puis clique sur **Recharger** dans l'UI (EF-E4).
 
 ---
@@ -130,7 +131,7 @@ Dossier `Dashboard/` (fichiers `.mo` + `package.mo` + `Resources/` contenant la 
 
 ### 3.1 Rôle
 
-Processus autonome (D2/D44, ADR-0015) : **double serveur loopback** — canal sim `127.0.0.1:51234` (accepte **une seule** connexion de simulation, D25) + serveur HTTP/WebSocket `127.0.0.1:51235` pour l'UI navigateur (D45/D46). Il reçoit les sorties du modèle, les distribue à l'UI, reçoit les actionneurs/commandes de l'UI et les retransmet à la sim, lit/pousse le fichier dashboard. Le code existant de `shared/` (protocole, parsing `.drawio`, pivot loopback) est repris et renommé `dashboard_manager` au développement.
+Processus autonome (D2/D44, ADR-0015), développé en **Python** et packagé en exe (PyInstaller, D47) : **double serveur loopback** — canal sim `127.0.0.1:51234` (accepte **une seule** connexion de simulation, D25) + serveur HTTP+SSE `127.0.0.1:51235` pour l'UI navigateur (D45/D46). Il reçoit les sorties du modèle, les distribue à l'UI, reçoit les actionneurs/commandes de l'UI et les retransmet à la sim, lit/pousse le fichier dashboard. Le C++ de `shared/` (protocole, parsing `.drawio`, pivot loopback) est **conservé et buildé en parallèle** (décision 2026-11-04 : « on essaie de maintenir les deux pour voir ») ; les deux implémentations sont validées par les mêmes golden files `tests/contract/`.
 
 ### 3.2 Cycle de vie
 
@@ -154,12 +155,12 @@ Le manager pousse toutes les valeurs à chaque pas sans jamais bloquer la simula
 ### 4.1 Conteneur
 
 - Le manager sert des **assets statiques** (HTML/JS/CSS + build statique draw.io embarqué, D34) en **HTTP sur `127.0.0.1:51235`** (D9/D45) ; l'utilisateur ouvre `http://127.0.0.1:51235` dans le **navigateur de son choix** (D43). Aucun composant n'est exposé publiquement (ENF-2) ; l'en-tête `Host` est validé côté serveur (§10).
-- Échanges manager ↔ navigateur : **WebSocket NDJSON** sur le même port (D46), messages JSON structurés de `protocole.md` §7.
+- Échanges manager ↔ navigateur sur le même port (D46) : **SSE** (`text/event-stream`, un `data: {json}\n\n` par message) pour manager → UI, **POST** (body JSON) pour UI → manager — messages JSON structurés de `protocole.md` §7.
 
 ### 4.2 Fonctions (EF-V)
 
 - Affichage de la **durée de simulation** en cours (EF-V1).
-- Boutons **Run** (temps réel, EF-V2), **Run jusqu'à la fin** (stopTime ou durée saisie, EF-V3), **Pause** (EF-V4) — envoyés au manager comme commandes (§8.5).
+- Boutons **Run** (temps réel, EF-V2), **Run jusqu'à la fin** (stopTime ou durée saisie, EF-V3), **Pause** (EF-V4) — envoyés au manager en POST comme commandes (§8.5).
 - **Jauge de ratio** temps réel/simulé (EF-V5).
 - Widgets du dashboard rendus selon R3 (D8) : structure/layout par le moteur draw.io (`viewer-static.min.js` en lecture seule, cellules mises à jour via l'API mxGraph), courbes d'historique et jauge de ratio en **canvas HTML superposé**.
 - **Journal de messages** (EF-V6) : variables non connectées, erreurs de protocole, événements de cycle de vie.
@@ -169,7 +170,7 @@ Le manager pousse toutes les valeurs à chaque pas sans jamais bloquer la simula
 
 ### 4.3 Cloisonnement
 
-La logique de l'UI (rendu R3, gestion des widgets, traitement des messages du manager, i18n) est isolée dans une **bibliothèque JS testable en Node** (`manager/web/`) ; le pont WebSocket est injecté (D19). Cela rend la logique testable sans navigateur.
+La logique de l'UI (rendu R3, gestion des widgets, traitement des messages du manager, i18n) est isolée dans une **bibliothèque JS testable en Node** (`manager/web/`) ; le pont SSE/POST est injecté (D19). Cela rend la logique testable sans navigateur.
 
 ---
 
@@ -177,7 +178,7 @@ La logique de l'UI (rendu R3, gestion des widgets, traitement des messages du ma
 
 - **draw.io self-hosté en mode embed** (`?embed=1&proto=json&configure=1`), build statique (**v32.3.0**, D34) embarqué dans le manager et servi en `http://127.0.0.1:51235/…`, chargé dans une **iframe de la page UI ouverte dans le navigateur** (D30 modifié ADR-0015) — aucun port supplémentaire.
 - L'iframe est pilotée par `postMessage` : l'UI envoie `load` (XML du dashboard courant), reçoit `save`/`autosave` (XML).
-- **Écriture du fichier (C2, D12)** : à chaque `save`, l'UI transmet le XML au manager (WebSocket), qui écrit le fichier **à côté du `.mo`**, sous le nom choisi par l'utilisateur (EF-E3).
+- **Écriture du fichier (C2, D12)** : à chaque `save`, l'UI transmet le XML au manager (POST), qui écrit le fichier **à côté du `.mo`**, sous le nom choisi par l'utilisateur (EF-E3).
 - **Palette de widgets (EF-E1, D32)** : bibliothèques de formes custom `<mxlibrary>` servies par le manager, une forme par type de widget V1 (`value`, `gauge`, `curve`, `button`, `slider`, `log`).
 - **Sécurité** : le XML reçu n'est **jamais injecté via `innerHTML`** ; il est écrit tel quel sur disque et rendu uniquement via le moteur draw.io ou un parser XML propre.
 - L'édition n'est possible qu'entre deux runs (EF-E4) : le bouton Éditer est désactivé pendant un run.
@@ -200,31 +201,32 @@ La logique de l'UI (rendu R3, gestion des widgets, traitement des messages du ma
 
 ## 7. Architecture du code (arborescence du dépôt)
 
-Monorepo, sous-dossiers par composant, **chacun avec son propre build** ; `docs/` (Zensical) inchangé à la racine.
+Monorepo, sous-dossiers par composant ; `docs/` (Zensical) inchangé à la racine.
 
 ```
 modelica_dashboard/
 ├── docs/                  # Zensical : besoin, options, spec_technique, contributeur, protocole, adr/
-├── manager/               # dashboard manager (à développer — ADR-0015) : serveur loopback C++20
-│   ├── CMakeLists.txt     # build propre du composant
-│   ├── src/               # canal sim 127.0.0.1:51234 + serveur HTTP/WebSocket UI 127.0.0.1:51235 + routage
+├── manager/               # dashboard manager (à développer — ADR-0015) : serveur loopback Python,
+│   │                      # packagé en exe autonome via PyInstaller (D47)
+│   ├── src/               # canal sim 127.0.0.1:51234 + serveur HTTP+SSE/POST UI 127.0.0.1:51235 + routage
 │   ├── web/               # UI navigateur : viewer (rendu R3) + éditeur draw.io embed ; logique JS testable en Node
-│   └── tests/             # tests Catch2 du manager
+│   └── tests/             # tests pytest du manager + E2E SSE/POST
 ├── modelica/              # package Modelica Dashboard + fonction C externe (DLL) — inchangé
 │   ├── Dashboard/         # .mo (blocs, paramètres)
 │   └── csrc/              # fonction C externe, build propre (DLL)
-├── shared/                # cœur repris par le manager : protocole NDJSON, parsing .drawio, pivot loopback
-│   │                      # (renommé dashboard_manager au développement — ADR-0015)
-│   └── CMakeLists.txt     # bibliothèque statique partagée manager ↔ tests
-├── tests/                 # intégration + contrat (golden-file)
+├── shared/                # cœur C++ du contrat, conservé et buildé en parallèle (ADR-0015) :
+│   │                      # protocole NDJSON, parsing .drawio, pivot loopback + tests Catch2
+│   └── CMakeLists.txt
+├── tests/                 # intégration C++ (harnais + end_to_end + bench) + contrat golden-file (Python)
 └── scripts/               # build.ps1 / build.sh : rejoue la séquence exacte de la CI en local
 ```
 
 Règles de cloisonnement :
 
-- `manager/`, `modelica/`, `shared/` ne se référencent que via `shared/` (contrat) — pas d'include croisé.
-- La logique JS de l'UI (`manager/web/`) n'utilise aucune API navigateur propriétaire : le pont WebSocket est injecté, ce qui permet de la tester en Node (D19).
-- Chaque composant buildable seul (`cmake --build` dans son dossier) ; `scripts/build.ps1` orchestre le build complet + tests + packaging.
+- `modelica/` et `shared/` (C++) ne se référencent que via `shared/` (contrat) — pas d'include croisé.
+- Le manager Python (`manager/`) réimplémente le **même contrat** de canal, validé par les mêmes golden files `tests/contract/` que le C++ de `shared/` (décision ADR-0015 : maintenir les deux en parallèle).
+- La logique JS de l'UI (`manager/web/`) n'utilise aucune API navigateur propriétaire : le pont SSE/POST est injecté, ce qui permet de la tester en Node (D19).
+- `shared/` et `modelica/csrc/` restent buildables seuls (CMake) ; `scripts/build.ps1` orchestrera aussi le packaging PyInstaller du manager au développement.
 
 ---
 
@@ -262,13 +264,13 @@ Le manager ajoute le ratio temps réel/simulé (EF-V5) avant retransmission à l
 
 Un message d'état sim→manager complète le flux (D40) : `{"type": "state", "version": 0, "state": "running|paused|stopped|finished"}`.
 
-### 8.4 Signaux d'état (manager → UI)
+### 8.4 Signaux d'état (manager → UI, SSE)
 
 - `{"type": "unconnected", "version": 0, "variables": ["x.y"]}` — variables du dashboard absentes du modèle (EF-V6).
 - `{"type": "dashboard", "version": 0, "source": "auto|manual", "file": "…", "xml": "<mxfile>…"}` — push du dashboard (mode auto) ou confirmation de chargement (mode manuel).
 - `{"type": "simState", "version": 0, "state": "running|paused|stopped|finished"}`.
 
-### 8.5 Commandes (UI → manager → sim)
+### 8.5 Commandes (UI → manager, POST → sim)
 
 ```json
 {"type": "cmd", "version": 0, "cmd": "run"}
@@ -284,7 +286,7 @@ Un message d'état sim→manager complète le flux (D40) : `{"type": "state", "v
 
 - L'éditeur draw.io (build statique embarqué dans le manager, D34) est servi en `http://127.0.0.1:51235/…` et chargé dans une **iframe de la page UI** ouverte dans le navigateur.
 - `postMessage` : UI → iframe `{"action": "load", "xml": "…"}` ; iframe → UI `{"event": "save", "xml": "…"}` / `{"event": "autosave", "xml": "…"}`.
-- À chaque `save`, l'UI transmet le XML au manager (WebSocket, §8.8) qui écrit le fichier dashboard (C2, D12). L'édition est bloquée pendant un run (EF-E4).
+- À chaque `save`, l'UI transmet le XML au manager (POST, §8.8) qui écrit le fichier dashboard (C2, D12). L'édition est bloquée pendant un run (EF-E4).
 
 ### 8.7 Interface composants ↔ fichier dashboard
 
@@ -292,11 +294,12 @@ Un message d'état sim→manager complète le flux (D40) : `{"type": "state", "v
 - **Manager** : lit le fichier au chargement et au clic sur **Recharger** (D13) ; le pousse à l'UI.
 - **Modèle (fonction C)** : en mode auto, pousse seulement le **chemin** du fichier au manager (M2 lecture seule côté modèle) ; ne parse jamais le XML.
 
-### 8.8 Canal navigateur ↔ manager (HTTP + WebSocket, `127.0.0.1:51235` — D45/D46)
+### 8.8 Canal navigateur ↔ manager (HTTP + SSE/POST, `127.0.0.1:51235` — D45/D46)
 
-- **HTTP** : sert les assets statiques de l'UI (HTML/JS/CSS, build draw.io) et une sonde d'état `GET /api/probe` (remplace les `probe`/`probeAck` du pont WebView2).
-- **WebSocket NDJSON** : transporte les messages de `protocole.md` §7 — `tick`, `simState`, `unconnected`, `dashboard` (manager → UI) et `cmd`, `loadDashboard(path)`, `reload()`, `openEditor()` (UI → manager).
-- Le transport change (pont WebView2 → WebSocket, ADR-0015) mais **pas le modèle de messages** : la version du protocole reste **0** (contrat non releasé entre-temps).
+- **HTTP statique** : sert les assets de l'UI (HTML/JS/CSS, build draw.io) et la sonde `GET /api/probe` (remplace les `probe`/`probeAck` du pont WebView2).
+- **SSE** (`text/event-stream`, un événement `data: {json}\n\n` par message) : manager → UI — `tick`, `simState`, `unconnected`, `dashboard`, `probeAck` (`protocole.md` §7).
+- **POST** (body JSON) : UI → manager — `cmd`, `loadDashboard(path)`, `reload()`, `openEditor()`, `probe`.
+- Le transport change (pont WebView2 → SSE/POST, ADR-0015) mais **pas le modèle de messages** : la version du protocole reste **0** (contrat non releasé entre-temps).
 
 ---
 
@@ -306,21 +309,21 @@ Pyramide retenue (D19) : **unitaires + intégration + contrat**, pas d'E2E navig
 
 | Niveau | Cible | Outil / lieu |
 |---|---|---|
-| **Unitaires** | Parsing/validation du `.drawio`, protocole (sérialisation, validation de trames), manager C++ avec sockets mockés, logique JS de l'UI en Node (pont WebSocket simulé) | C++ : Catch2 via CTest ; JS : `node --test` dans `manager/web/` |
-| **Intégration** | Harnais C + `test_end_to_end` (flux réel sur 51234 : handshake, data, commandes, mode auto/manuel, EF-B4/EF-V6) ; E2E UI via WebSocket contre le vrai manager (script Python) ; benchmark framing 1000 var × 100 Hz | `tests/integration/`, exécuté en local et en CI |
-| **Contrat (golden-file)** | Fichier `.drawio` de référence + vecteurs de messages JSON du protocole, comparés à chaque build | `tests/contract/` ; toute évolution du format/protocole fait échouer le test volontairement → versionnage explicite (D20) |
+| **Unitaires** | Parsing/validation du `.drawio`, protocole (sérialisation, validation de trames) : C++ `shared/` (sockets mockés) **et** manager Python (sockets mockés) ; logique JS de l'UI en Node (pont SSE/POST simulé) | C++ : Catch2 via CTest ; Python : pytest dans `manager/` ; JS : `node --test` dans `manager/web/` |
+| **Intégration** | Harnais C + `test_end_to_end` (flux réel sur 51234 : handshake, data, commandes, mode auto/manuel, EF-B4/EF-V6) ; E2E UI via SSE/POST contre le vrai manager (script Python) ; benchmark framing 1000 var × 100 Hz | `tests/integration/` (C++/CMake) + `manager/tests/` (Python), exécutés en local et en CI |
+| **Contrat (golden-file)** | Fichier `.drawio` de référence + vecteurs de messages JSON du protocole, comparés à chaque build — valident **les deux** implémentations (C++ shared/ et Python manager) | `tests/contract/` ; toute évolution du format/protocole fait échouer le test volontairement → versionnage explicite (D20) |
 
-- **CI** (D18) : workflow GitHub Actions `build.yml` — job `linux` (build + CTest + contrat) et job `windows` (idem + packaging DLL + release sur tag `v*.*.*`). Plus de WebView2/NuGet (ADR-0015).
+- **CI** (D18) : workflow GitHub Actions `build.yml` — job `linux` (build C++ + CTest + contrat + tests Python manager) et job `windows` (idem + packaging DLL + PyInstaller + release sur tag `v*.*.*`). Plus de WebView2/NuGet (ADR-0015).
 - **Rejouable en local** : `scripts/build.ps1` (Windows) / `scripts/build.sh` (Linux) exécutent exactement la même séquence que la CI.
-- **Non couvert en V1** : E2E sur un navigateur réel (l'UI est testée via sa logique JS isolée, §4.3, et le manager via son WebSocket, §9). À ajouter en V2 si besoin.
+- **Non couvert en V1** : E2E sur un navigateur réel (l'UI est testée via sa logique JS isolée, §4.3, et le manager via SSE/POST, §9). À ajouter en V2 si besoin.
 
 ---
 
 ## 10. Sécurité (ENF-2)
 
-- **Loopback strict** : seuls deux ports TCP sont ouverts, tous deux sur `127.0.0.1` — **51234** (canal sim, D26) et **51235** (UI HTTP/WebSocket, D45). Aucun composant n'est exposé publiquement (ENF-2).
+- **Loopback strict** : seuls deux ports TCP sont ouverts, tous deux sur `127.0.0.1` — **51234** (canal sim, D26) et **51235** (UI HTTP+SSE/POST, D45). Aucun composant n'est exposé publiquement (ENF-2).
 - **Validation de l'en-tête `Host`** côté serveur UI (`127.0.0.1` / `localhost` uniquement) — mesure anti DNS-rebinding, rendue nécessaire par le navigateur (ADR-0015 ; à reporter dans l'ADR-0011).
-- **Validation des entrées** : taille maximale par trame sur le canal : **1 MiB** (D23/D35) ; limite de taille équivalente sur les messages WebSocket.
+- **Validation des entrées** : taille maximale par trame sur le canal : **1 MiB** (D23/D35) ; limite de taille équivalente sur les événements SSE et les body POST.
 - **XML** : jamais d'injection via `innerHTML` (§5).
 - ⚠️ **Risque accepté, à réévaluer (D23)** : au-delà de la taille max et du `Host`, aucune validation sémantique des trames (pas de vérification d'enum de type, de jeu de caractères des noms, ni d'authentification de la connexion). Tout processus local peut envoyer des données forgées sur les ports fixes. Ce risque est accepté en V1 (menace limitée aux processus de confiance sur le poste) et **doit être réévalué** si le périmètre change (multi-utilisateur, port configurable, exposition réseau). Voir [ADR-0011](adr/0011-securite.md).
 
@@ -328,7 +331,7 @@ Pyramide retenue (D19) : **unitaires + intégration + contrat**, pas d'E2E navig
 
 ## 11. Système de livraison
 
-- **Dashboard manager** : un seul exe autonome `dashboard_manager.exe` (C++20, assets web embarqués — D16/D47, L2). Zéro installation (EF-E2). Distribué en **release GitHub** (artifact du job CI Windows sur tag `v*.*.*`).
+- **Dashboard manager** : script **Python embarqué (PyInstaller)** produisant un seul exe autonome `dashboard_manager.exe` (assets web embarqués — D16/D47). Zéro installation (EF-E2). Distribué en **release GitHub** (artifact du job CI Windows sur tag `v*.*.*`). Le cœur C++ `shared/` reste buildé/testé en parallèle (ADR-0015).
 - **Bibliothèque Modelica** : package `Dashboard/` + DLL C externe, distribué en zip à copier dans les libraries OMEdit (D17) ; procédure documentée dans la doc utilisateur.
 - **Éditeur** : servi par le manager (build statique draw.io embarqué) — rien à installer séparément (EF-E2).
 - **Documentation** : publiée par Zensical sur GitHub Pages (workflow `docs.yml`, ENF-3).
@@ -344,9 +347,9 @@ Tout est dans `docs/`, publié par Zensical (ENF-3) :
 |---|---|
 | [Spécification de besoins](besoin.md) | EF/ENF validées |
 | [Options techniques](option_technique.md) / [Options d'architecture](options_archtecture.md) | Axes et architectures évaluées |
-| `spec_technique.md` (ce document) | Architecture retenue (ADR-0015), interfaces, tests, livraison |
-| `protocole.md` | Contrat détaillé du canal sim (127.0.0.1:51234, NDJSON, limite 1 MiB) et du canal UI (WebSocket 127.0.0.1:51235) : handshake, messages, codes d'erreur, cycle de vie, exemples issus des tests de contrat |
-| `contributeur.md` | Prérequis (OM v1.27.1, MSVC/CMake, Node LTS, Python 3 — sans WebView2), arborescence, build local (même séquence que la CI), tests, PR |
+| `spec_technique.md` (ce document) | Architecture retenue (ADR-0015 acté), interfaces, tests, livraison |
+| `protocole.md` | Contrat détaillé du canal sim (127.0.0.1:51234, NDJSON, limite 1 MiB) et du canal UI (SSE/POST 127.0.0.1:51235) : handshake, messages, codes d'erreur, cycle de vie, exemples issus des tests de contrat |
+| `contributeur.md` | Prérequis (OM v1.27.1, Python 3 + PyInstaller, MSVC/CMake pour shared/, Node LTS — sans WebView2), arborescence, build local (même séquence que la CI), tests, PR |
 | `adr/` | Une fiche par décision tranchée (contexte, décision, conséquences), dont [ADR-0015](adr/0015-retour-navigateur-dashboard-manager.md) pour le retour arrière navigateur |
 | Doc utilisateur (FR/EN) | Installation du package Modelica, lancement du dashboard manager, édition d'un dashboard, utilisation en run |
 

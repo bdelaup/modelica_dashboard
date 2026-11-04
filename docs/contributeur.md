@@ -12,16 +12,16 @@
 - **Plus de WebView2 ni de NuGet** (ADR-0015) : le rendu et l'édition se font dans le navigateur du poste, servi par le dashboard manager
 - Node.js LTS (tests de la logique JS de l'UI web, `manager/web/`, quand elle sera recréée)
 - OpenModelica **v1.27.1** (D27) avec `omc` dans le `PATH` (tests d'intégration OM, Windows)
-- Python 3 (tests de contrat et E2E)
+- Python 3 (tests de contrat et E2E) + **PyInstaller** (packaging du manager en exe autonome, D47)
 
 ## 2. Arborescence
 
 ```
 modelica_dashboard/
 ├── docs/                  # Zensical (ce dossier)
-├── manager/               # dashboard manager (à développer — ADR-0015) : serveur loopback C++20
+├── manager/               # dashboard manager (à développer — ADR-0015) : serveur loopback Python, packagé en exe (PyInstaller, D47)
 │   ├── CMakeLists.txt
-│   ├── src/               # canal sim 127.0.0.1:51234 + serveur HTTP/WebSocket UI 127.0.0.1:51235 + routage
+│   ├── src/               # canal sim 127.0.0.1:51234 + serveur HTTP+SSE/POST UI 127.0.0.1:51235 + routage
 │   ├── web/               # UI navigateur (viewer + éditeur draw.io self-hosté) servie en loopback, logique JS testable en Node
 │   └── tests/             # tests Catch2 du manager
 ├── modelica/              # package Modelica Dashboard + fonction C externe (DLL) — inchangé
@@ -34,7 +34,7 @@ modelica_dashboard/
 └── scripts/               # build.ps1 / build.sh : rejoue la séquence exacte de la CI en local
 ```
 
-Règles de cloisonnement (spec §7) : `manager/`, `modelica/`, `shared/` ne se référencent que via `shared/` ; la logique JS de l'UI (`manager/web/`) n'utilise aucune API navigateur propriétaire (pont WebSocket injecté, testable en Node).
+Règles de cloisonnement (spec §7) : `manager/`, `modelica/`, `shared/` ne se référencent que via `shared/` ; la logique JS de l'UI (`manager/web/`) n'utilise aucune API navigateur propriétaire (pont SSE/POST injecté, testable en Node).
 
 ## 3. Build et tests en local (rejouable, identique à la CI)
 
@@ -50,7 +50,7 @@ Séquence exacte (ADR-0008, D18) :
 3. tests de contrat (golden-file) : `tests/contract/`
 4. packaging dans `dist/` : `DashboardExternal.dll` + `Dashboard/` (Windows) ; binaires de test (Linux)
 
-Quand le manager et son UI seront développés (ADR-0015), `manager/` (build C++ + CTest + E2E via WebSocket) et `manager/web/` (tests JS `node --test`) s'ajouteront à cette séquence.
+Quand le manager et son UI seront développés (ADR-0015), `manager/` (Python : tests pytest + E2E via SSE/POST + packaging PyInstaller) et `manager/web/` (tests JS `node --test`) s'ajouteront à cette séquence.
 
 **Encodage des scripts** : `scripts/build.ps1` est volontairement en **ASCII pur** (CRLF), ce qui évite le piège UTF-8 sans BOM de Windows PowerShell 5.1 (voir git history / ADR-0013) — ne pas y réintroduire d'accents.
 
@@ -99,7 +99,7 @@ Pièges omc v1.27.1 constatés (voir aussi [docs/poc-binding-runtime.md](poc-bin
 
 - Le contrat est dans [protocole.md](protocole.md) — rédigé avant le code (D29).
 - Toute évolution du format `.drawio` ou du protocole met à jour `protocole.md`, `shared/`, **et** régénère les golden files de `tests/contract/` ; le test de contrat échoue volontairement sinon (versionnage explicite, ADR-0009).
-- Versions de départ : produit `v0.1.0`, protocole `version: 0`, `dashboardVersion=\"0\"` (D31). L'ADR-0015 maintient le protocole à la version 0 (le canal sim ↔ manager est inchangé ; seul le transport manager ↔ navigateur est passé de WebView2 à WebSocket).
+- Versions de départ : produit `v0.1.0`, protocole `version: 0`, `dashboardVersion=\"0\"` (D31). L'ADR-0015 maintient le protocole à la version 0 (le canal sim ↔ manager est inchangé ; seul le transport manager ↔ navigateur est passé de WebView2 à SSE/POST).
 
 ## 5. CI
 

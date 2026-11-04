@@ -12,7 +12,7 @@ endif()
 
 # Monorepo : chaque composant a aussi son propre build (spec §7), mais la racine
 # orchestre shared + modelica/csrc + tests pour les tests d'intégration.
-# Le dashboard manager (UI servie au navigateur, ADR-0015) y sera ajouté au dev.
+# Le dashboard manager (Python embarqué, UI servie au navigateur — ADR-0015) n est pas buildé\n# par CMake : son packaging PyInstaller sera orchestré par scripts/ au développement.
 add_subdirectory(shared)
 add_subdirectory(modelica/csrc)
 

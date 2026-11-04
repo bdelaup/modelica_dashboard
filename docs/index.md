@@ -10,7 +10,7 @@ Depuis le 2026-11-04 ([ADR-0015](adr/0015-retour-navigateur-dashboard-manager.md
 - [Options techniques](option_technique.md) — axes d'architecture et possibilités ouvertes (document d'exploration historique).
 - [Options d'architecture](options_archtecture.md) — architectures globales évaluées (A2, A4a, A4b, A5, A6) ; variante de **A2 retenue** (ADR-0015).
 - [Spécification technique](spec_technique.md) — architecture retenue : blocs (bibliothèque, dashboard manager, navigateur), interfaces exhaustives, format du fichier dashboard, tests, livraison, sécurité, versioning. Les décisions tranchées sont consignées en [ADR](adr/) (dont [ADR-0015](adr/0015-retour-navigateur-dashboard-manager.md) pour le retour arrière navigateur).
-- [Protocole du canal](protocole.md) — contrat détaillé du canal sim ↔ manager (127.0.0.1:51234, NDJSON, handshake, messages, codes d'erreur) et du canal UI manager ↔ navigateur (WebSocket 127.0.0.1:51235).
+- [Protocole du canal](protocole.md) — contrat détaillé du canal sim ↔ manager (127.0.0.1:51234, NDJSON, handshake, messages, codes d'erreur) et du canal UI manager ↔ navigateur (SSE/POST 127.0.0.1:51235).
 - [Guide du contributeur](contributeur.md) — prérequis, arborescence, build local rejouable comme la CI, tests, PR.
 - [Note de POC binding](poc-binding-runtime.md) — résolution par nom via l'API runtime OM.
 - [ADR](adr/index.md) — une fiche par décision tranchée.
