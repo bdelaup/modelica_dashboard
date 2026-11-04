@@ -1,5 +1,5 @@
 // Parsing/validation du fichier dashboard .drawio (spec §6, D7/D31/D32).
-// Parser XML minimal sans dépendance externe : jamais d'injection innerHTML côté viewer.
+// Parser XML minimal sans dépendance externe : jamais d'injection innerHTML côté UI (navigateur).
 #pragma once
 
 #include <string>

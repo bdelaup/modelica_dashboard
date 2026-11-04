@@ -1,7 +1,7 @@
 # Spécification de besoins — modelica_dashboard
 
 **Projet** : environnement de tableaux de bord interactifs pour OpenModelica (exécution temps réel + supervision externe)
-**Version** : 1.1
+**Version** : 1.2 (2026-11-04 : ADR-0015, voir §6)
 **Statut** : validée avec le demandeur
 
 ---
@@ -84,3 +84,4 @@ L'environnement se compose de **trois éléments** :
 - **Acté** : en cas de dépassement du temps réel, pas de rattrapage par à-coups — le temps simulé ralentit et la jauge de ratio informe l'utilisateur (EF-V5).
 - **Acté** : un seul dashboard et un seul viewer par modèle (EF-E5).
 - **Acté** : pas de recompilation du modèle lors des changements de dashboard (EF-I1).
+- **Acté (2026-11-04, [ADR-0015](adr/0015-retour-navigateur-dashboard-manager.md))** : le rendu et l'édition des dashboards se font dans le **navigateur du poste**, via une UI web servie en local par le dashboard manager — ENF-1 « à défaut » (web local) retenu.

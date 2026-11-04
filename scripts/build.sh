@@ -1,31 +1,25 @@
 #!/usr/bin/env bash
-# build.sh — rejoue en local la séquence exacte de la CI (.github/workflows/build.yml)
-# ADR-0008/D18. Usage : ./scripts/build.sh   (Linux/macOS pour shared+csrc+tests ;
-# le viewer.exe Win32/WebView2 n'est buildé que sur Windows, via build.ps1).
+# build.sh - rejoue en local la sequence exacte de la CI (.github/workflows/build.yml)
+# ADR-0008/D18, ADR-0015 : plus de WebView2, rendu/edition dans le navigateur.
+# Usage : ./scripts/build.sh   (Linux/macOS : shared + csrc + tests).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 
-echo "== [1/6] configure =="
+echo "== [1/4] configure =="
 cmake -S "$ROOT" -B "$ROOT/build" -DCMAKE_BUILD_TYPE=Release
 
-echo "== [2/6] build (shared + modelica/csrc + tests) =="
+echo "== [2/4] build (shared + modelica/csrc + tests) =="
 cmake --build "$ROOT/build" -j
 
-echo "== [3/6] tests C++ (CTest : shared, viewer_core, intégration, E2E headless, benchmark framing) =="
+echo "== [3/4] tests C++ (CTest : shared, integration end_to_end, benchmark framing) =="
 DASHBOARD_REPO_ROOT="$ROOT" ctest --test-dir "$ROOT/build" --output-on-failure
 
-echo "== [4/6] tests JS du viewer (node --test) =="
-(cd "$ROOT/viewer/src/web" && npm test --silent)
-
-echo "== [5/6] tests de contrat (golden-file) =="
+echo "== [4/4] tests de contrat (golden-file) + packaging (artefacts de test) =="
 python3 "$ROOT/tests/contract/test_contract.py"
 
-echo "== [6/6] packaging (hors Windows : artefacts de test uniquement) =="
 mkdir -p "$ROOT/dist"
 cp "$ROOT/build/shared/shared_tests" "$ROOT/dist/" 2>/dev/null || true
 cp "$ROOT/build/tests/integration/test_end_to_end" "$ROOT/dist/" 2>/dev/null || true
 cp "$ROOT/build/modelica/csrc/dashboard_harness" "$ROOT/dist/" 2>/dev/null || true
-cp "$ROOT/build/viewer/viewer_headless" "$ROOT/dist/" 2>/dev/null || true
-if [ -f "$ROOT/build/viewer/viewer.exe" ]; then cp "$ROOT/build/viewer/viewer.exe" "$ROOT/dist/"; fi
-echo "BUILD OK — artefacts dans dist/"
+echo "BUILD OK - artefacts dans dist/"

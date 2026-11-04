@@ -2,7 +2,7 @@
 
 **Projet** : environnement de tableaux de bord interactifs pour OpenModelica (exécution temps réel + supervision externe)
 **Version** : 1.0
-**Statut** : propositions retenues après tri — **aucune architecture écartée**, aucune préférence retenue ; les choix seront creusés un par un
+**Statut** : propositions retenues après tri — **aucune architecture écartée**, aucune préférence retenue ; les choix seront creusés un par un — **mise à jour 2026-11-04 : A4b écartée, variante de A2 retenue ([ADR-0015](adr/0015-retour-navigateur-dashboard-manager.md))**
 **Références** : [Spécification de besoins](besoin.md) (EF/ENF), [Options techniques](option_technique.md) (axes G/P/E/C/L/canal/R/F)
 
 ---
@@ -113,5 +113,5 @@ Ces axes de [option_technique.md](option_technique.md) restent ouverts et seront
 
 ## 5. Prochaines étapes
 
-1. ~~Sélectionner l'architecture (ou les architectures) à creuser.~~ **Acté : A4b retenue** — voir [ADR-0000](adr/0000-choix-a4b.md) et [spécification technique](spec_technique.md), mergées via la PR #3 (commit `63e1fef`, 2026-11-01).
-2. Pour chaque choix retenu, trancher les axes transversaux de la section 4, un par un, en s'appuyant sur les exigences du [besoin](besoin.md). **Acté pour A4b** : voir le tableau D1–D25 et les ADR 0001–0012 de la [spécification technique](spec_technique.md).
+1. ~~Sélectionner l'architecture (ou les architectures) à creuser.~~ **Acté : A4b retenue** (PR #3, commit `63e1fef`, 2026-11-01) — **écartée le 2026-11-04** : retour à une **variante de A2** (web locale dans le navigateur du poste, pivot en processus autonome P2 renommé **dashboard manager**) — voir [ADR-0015](adr/0015-retour-navigateur-dashboard-manager.md) et la [spécification technique](spec_technique.md) v2.0.
+2. Pour chaque choix retenu, trancher les axes transversaux de la section 4, un par un, en s'appuyant sur les exigences du [besoin](besoin.md). **Acté pour A4b, révisé par l'ADR-0015** : voir le tableau D1–D47 et les ADR 0001–0015 de la [spécification technique](spec_technique.md).

@@ -1,6 +1,6 @@
 # ADR-0000 — Choix de l'architecture A4b et merge de la spécification technique
 
-**Statut** : acté (architecture retenue, spécification livrée)
+**Statut** : acté (architecture retenue, spécification livrée) — A4b remplacée par une variante de A2 (web locale dans le navigateur) : [ADR-0015](0015-retour-navigateur-dashboard-manager.md) (2026-11-04)
 **Date** : 2026-11-01
 **Références** : [options d'architecture](../options_archtecture.md) §5 (étape 1 : sélectionner l'architecture), [spécification technique](../spec_technique.md), [PR #3](https://github.com/bdelaup/modelica_dashboard/pull/3)
 

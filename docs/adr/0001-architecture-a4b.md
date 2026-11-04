@@ -1,6 +1,6 @@
 # ADR-0001 — Architecture A4b retenue, Windows-only en V1, pivot embarqué
 
-**Statut** : acté
+**Statut** : acté — P3 (pivot embarqué dans le binaire viewer) abandonné au profit de P2 (processus autonome dashboard manager) : [ADR-0015](0015-retour-navigateur-dashboard-manager.md) (2026-11-04)
 **Références** : [options d'architecture](../options_archtecture.md) (A4b), [spec technique](../spec_technique.md) D1/D2
 
 ## Contexte

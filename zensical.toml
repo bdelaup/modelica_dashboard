@@ -15,12 +15,13 @@ nav = [
   { "Spécification de besoins" = "besoin.md" },
   { "Options techniques" = "option_technique.md" },
   { "Options d'architecture" = "options_archtecture.md" },
-  { "Spécification technique (A4b)" = "spec_technique.md" },
+  { "Spécification technique" = "spec_technique.md" },
   { "Protocole du canal" = "protocole.md" },
   { "Guide du contributeur" = "contributeur.md" },
   { "Note de POC binding" = "poc-binding-runtime.md" },
   { "ADR" = "adr/index.md" },
   { "Choix A4b" = "adr/0000-choix-a4b.md" },
+  { "Retour navigateur / dashboard manager (ADR-0015)" = "adr/0015-retour-navigateur-dashboard-manager.md" },
 ]
 
 [project.theme]

@@ -1,35 +1,29 @@
-# build.ps1 — rejoue en local (Windows) la séquence exacte de la CI
-# (.github/workflows/build.yml) : build -> ctest -> node --test -> contrat -> package.
-# ADR-0008/D18. Prérequis : MSVC/CMake, Node LTS, Python 3, WebView2 runtime.
+# build.ps1 - rejoue en local (Windows) la sequence exacte de la CI
+# (.github/workflows/build.yml) : build -> ctest -> contrat -> package.
+# ADR-0008/D18, ADR-0015 : plus de WebView2/nuget, le rendu et l'edition
+# se font dans le navigateur via le dashboard manager.
+# Prerequis : MSVC/CMake, Python 3. Fichier volontairement en ASCII pur (piège
+# d'encodage UTF-8 sans BOM de Windows PowerShell 5.1, voir docs/contributeur.md).
 $ErrorActionPreference = 'Stop'
 $ROOT = Split-Path -Parent $PSScriptRoot
 Set-Location $ROOT
 
-Write-Host "== [1/6] configure =="
-# SDK WebView2 via NuGet (une seule fois suffit ; mis en cache sinon)
-if (-not (Test-Path "$ROOT\.nuget\Microsoft.Web.WebView2\build\native\include\WebView2.h")) {
-    nuget install Microsoft.Web.WebView2 -ExcludeVersion -OutputDirectory "$ROOT\.nuget" -NonInteractive
-}
-cmake -S $ROOT -B "$ROOT\build" -DCMAKE_BUILD_TYPE=Release -DWebView2_DIR="$ROOT\.nuget\Microsoft.Web.WebView2"
+Write-Host "== [1/4] configure =="
+cmake -S $ROOT -B "$ROOT\build" -DCMAKE_BUILD_TYPE=Release
 
-Write-Host "== [2/6] build (shared + modelica/csrc + viewer.exe + tests) =="
+Write-Host "== [2/4] build (shared + modelica/csrc + tests) =="
 cmake --build "$ROOT\build" -j --config Release
 
-Write-Host "== [3/6] tests unitaires C++ + intégration (CTest) =="
+Write-Host "== [3/4] tests unitaires C++ + integration (CTest) =="
 $env:DASHBOARD_REPO_ROOT = $ROOT
 ctest --test-dir "$ROOT\build" --output-on-failure --build-config Release
 
-Write-Host "== [4/6] tests JS du viewer (node --test) =="
-Push-Location "$ROOT\viewer\src\web"
-npm test --silent
-Pop-Location
-
-Write-Host "== [5/6] tests de contrat (golden-file) =="
+Write-Host "== [4/4] tests de contrat (golden-file) puis packaging =="
 python "$ROOT\tests\contract\test_contract.py"
 
-Write-Host "== [6/6] packaging =="
 New-Item -ItemType Directory -Force "$ROOT\dist" | Out-Null
-Copy-Item "$ROOT\build\viewer\Release\viewer.exe" "$ROOT\dist\" -ErrorAction SilentlyContinue
 Copy-Item "$ROOT\build\modelica\csrc\Release\DashboardExternal.dll" "$ROOT\dist\" -ErrorAction SilentlyContinue
-Copy-Item -Recurse "$ROOT\modelica\Dashboard" "$ROOT\dist\Dashboard"
-Write-Host "BUILD OK — artefacts dans dist\ (viewer.exe, DashboardExternal.dll, Dashboard\)"
+# Package Modelica complet (Resources/Include + Resources/Library/win64/DashboardExternal.dll
+# installee en post-build par CMake depuis modelica/csrc).
+Copy-Item -Recurse -Force "$ROOT\modelica\Dashboard" "$ROOT\dist\Dashboard"
+Write-Host "BUILD OK - artefacts dans dist\ (DashboardExternal.dll, Dashboard\)"

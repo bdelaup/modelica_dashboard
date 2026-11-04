@@ -1,6 +1,6 @@
 # ADR-0007 — Livraison : exe autonome unique (L2) + package Modelica standard
 
-**Statut** : acté
+**Statut** : acté — dashboard_manager.exe sert les assets web au navigateur (IHM non embarquée) : [ADR-0015](0015-retour-navigateur-dashboard-manager.md) (2026-11-04)
 **Références** : [options techniques](../option_technique.md) §5/§10, [spec technique](../spec_technique.md) D16/D17, §11
 
 ## Contexte

@@ -1,3 +1,28 @@
 build/
 dist/
-.nuget/
+site/
+node_modules/
+__pycache__/
+
+# Filet de sécurité : artefacts de build générés à la RACINE du dépôt.
+# Règle : ne jamais lancer omc depuis la racine (omc y dépose ~40 fichiers :
+# <Model>.c/.o/.makefile/.exe, _*.c, etc.) mais depuis build/omc/ (couvert par build/).
+# Voir docs/contributeur.md §3.2. Ces patterns racine-only n'ignorent rien du dépôt
+# (aucun fichier suivi ne matche, vérifié le 2026-11-04).
+/*.o
+/*.obj
+/*.exe
+/*.dll
+/*.lib
+/*.pdb
+/*.ilk
+/*.makefile
+/*.log
+/*.bat
+/*.c
+/*.h
+/*.json
+/*.xml
+/*.mat
+/*.res
+/*.libs

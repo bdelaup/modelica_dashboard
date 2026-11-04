@@ -1,6 +1,6 @@
 # ADR-0013 — Décisions de mise en œuvre (session de cadrage dev)
 
-**Statut** : acté
+**Statut** : acté — D30/D34/D42 (iframe WebView2, draw.io embarqué dans viewer.exe, viewer_headless) remplacés : [ADR-0015](0015-retour-navigateur-dashboard-manager.md) (2026-11-04)
 **Références** : [spec technique](../spec_technique.md) (D26–D34), [protocole](../protocole.md), besoin (EF/ENF)
 
 ## Contexte

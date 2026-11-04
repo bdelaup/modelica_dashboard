@@ -1,6 +1,6 @@
 # ADR-0004 — Éditeur draw.io self-hosté embed, format .drawio natif, rendu viewer R3 hybride, C2
 
-**Statut** : acté (C2 à réévaluer)
+**Statut** : acté (C2 à réévaluer) — éditeur draw.io servi par le dashboard manager en loopback, ouvert dans le navigateur (sans iframe WebView2) : [ADR-0015](0015-retour-navigateur-dashboard-manager.md) (2026-11-04)
 **Références** : [options techniques](../option_technique.md) §3/§4/§7, [spec technique](../spec_technique.md) D6/D7/D8/D12
 
 ## Contexte

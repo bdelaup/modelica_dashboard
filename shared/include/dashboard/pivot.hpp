@@ -1,4 +1,4 @@
-// Pivot — serveur loopback embarqué dans viewer.exe (D2/D26, spec §3).
+// Dashboard manager (ex-pivot) — serveur loopback en processus autonome (D2/D44, ADR-0015, spec §3).
 // Portable : POSIX (tests/CI Linux) et Winsock (Windows) via une couche socket interne.
 // Une seule connexion de simulation acceptée (D25) ; sinon error/busy puis fermeture.
 #pragma once
@@ -18,12 +18,12 @@ using dashboard_socket_t = int;
 
 namespace dashboard {
 
-// Événements remontés au viewer (via le pont WebView2 en production, callbacks en test).
+// Événements remontés à l'UI navigateur (via WebSocket en production, callbacks en test — ADR-0015).
 struct PivotEvents {
     // Reçu de la sim, validé.
     std::function<void(const json& data)> onData;                 // "data"
     std::function<void(std::string_view state)> onSimState;       // "state" -> simState
-    // Émis vers le viewer.
+    // Émis vers l'UI (navigateur).
     std::function<void(const json& tick)> onTick;                 // "tick"
     std::function<void(const std::vector<std::string>&)> onUnconnected;
     std::function<void(const json& dashboard)> onDashboard;       // source auto|manual
@@ -46,7 +46,7 @@ public:
     bool isListening() const { return listening_.load(); }
     bool simConnected() const { return connected_.load(); }
 
-    // Envoie une commande à la sim connectée (viewer -> pivot -> sim, §8.5).
+    // Envoie une commande à la sim connectée (UI -> manager -> sim, §8.5).
     // Retourne false si aucune sim connectée ou envoi impossible.
     bool sendCommand(const json& cmd);
 

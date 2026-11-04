@@ -1,6 +1,6 @@
 # ADR-0002 — Port fixe par défaut, lancement viewer/sim, bouton Recharger, une sim par viewer
 
-**Statut** : acté
+**Statut** : acté — viewer renommé dashboard manager, décisions inchangées : [ADR-0015](0015-retour-navigateur-dashboard-manager.md) (2026-11-04)
 **Références** : [spec technique](../spec_technique.md) D5/D10/D11/D13/D25
 
 ## Contexte

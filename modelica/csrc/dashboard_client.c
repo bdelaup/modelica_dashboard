@@ -4,9 +4,17 @@
 // ici — voir dashboard_client_input_* : la valeur est lue dans une table nom -> valeur
 // alimentée par les "cmd set" reçus du pivot ; en production, l'API runtime donne
 // l'adresse de la variable du modèle compilé et la valeur y est écrite directement.
+//
+// Logs de diagnostic (visibles dans la sortie de simulation OMEdit / le .bat) :
+//   DASHBOARD_LOG=0        : silencieux
+//   DASHBOARD_LOG=1        (défaut) : événements (connect, hello/helloAck, première
+//                        donnée poussée par variable, cmd reçue, erreurs)
+//   DASHBOARD_LOG=2        : + un log par appel input/output (verbose, par pas)
+//   DASHBOARD_LOG_FILE=chemin : journal dupliqué dans ce fichier (append)
 #include "dashboard_client.h"
 
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +28,8 @@ typedef SOCKET sock_t;
 #define SOCK_INV INVALID_SOCKET
 static int sock_close(sock_t s) { return closesocket(s); }
 static void wsa_init(void) { static int done = 0; if (!done) { WSADATA d; int r = WSAStartup(MAKEWORD(2,2), &d); if (r != 0) fprintf(stderr, "WSAStartup err=%d\n", r); done = 1; } }
+static double now_ms(void) { return (double)GetTickCount64(); }
+static void sleep_ms(unsigned ms) { Sleep(ms); }
 #else
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -27,11 +37,14 @@ static void wsa_init(void) { static int done = 0; if (!done) { WSADATA d; int r 
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 typedef int sock_t;
 #define SOCK_INV (-1)
 static int sock_close(sock_t s) { return close(s); }
 static void wsa_init(void) {}
+static double now_ms(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6; }
+static void sleep_ms(unsigned ms) { struct timespec ts; ts.tv_sec = ms / 1000; ts.tv_nsec = (long)(ms % 1000) * 1000000L; nanosleep(&ts, NULL); }
 #endif
 
 #define DASH_PORT 51234
@@ -42,8 +55,49 @@ static sock_t g_sock = SOCK_INV;
 static int g_connected = 0;
 static unsigned long g_seq = 0;
 
+/* --- Journal de diagnostic --- */
+static int g_log_level = -1;      /* -1 = pas encore lu dans l'environnement */
+static FILE* g_log_file = NULL;
+static int g_log_done = 0;
+static double g_log_t0 = 0.0;
+
+static void log_init(void) {
+    if (g_log_done) return;
+    g_log_done = 1;
+    g_log_t0 = now_ms();
+    const char* v = getenv("DASHBOARD_LOG");
+    g_log_level = (v && *v) ? atoi(v) : 1;
+    const char* f = getenv("DASHBOARD_LOG_FILE");
+    if (f && *f) {
+        g_log_file = fopen(f, "a");
+        if (!g_log_file) fprintf(stderr, "[dashboard] DASHBOARD_LOG_FILE \"%s\" non ouvrable\n", f);
+    }
+    atexit(dashboard_client_disconnect);
+}
+
+/* level 0 = toujours affiché ; 1 = événements ; 2 = verbose par pas. */
+static void dash_log(int level, const char* fmt, ...) {
+    if (g_log_done == 0) log_init();
+    if (level > g_log_level) return;
+    char head[64];
+    snprintf(head, sizeof(head), "[dashboard %8.3fs] ", (now_ms() - g_log_t0) / 1000.0);
+    va_list ap;
+    va_start(ap, fmt);
+    fputs(head, stderr);
+    vfprintf(stderr, fmt, ap);
+    fflush(stderr);
+    if (g_log_file) {
+        va_end(ap);
+        va_start(ap, fmt);
+        fputs(head, g_log_file);
+        vfprintf(g_log_file, fmt, ap);
+        fflush(g_log_file);
+    }
+    va_end(ap);
+}
+
 /* table nom -> dernière valeur reçue (POC ; en prod : adresse via API runtime, D14) */
-typedef struct { char name[256]; double real_v; long long int_v; int has_value; int is_bool; } entry_t;
+typedef struct { char name[256]; double real_v; long long int_v; int has_value; int is_bool; int logged_push; int logged_dflt; } entry_t;
 static entry_t g_entries[1024];
 static int g_entry_count = 0;
 
@@ -91,22 +145,39 @@ static void json_escape(const char* in, char* out, size_t outsz) {
 }
 
 DASHBOARD_API int dashboard_client_connect(const char* variablesCsv, const char* dashboardFile) {
+    dash_log(1, "connect: variablesCsv=\"%s\" dashboardFile=\"%s\"\n",
+         variablesCsv ? variablesCsv : "", dashboardFile ? dashboardFile : "");
     wsa_init();
-    if (g_connected) return 0;
-    g_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (g_sock == SOCK_INV) return -1;
+    if (g_connected) { dash_log(1, "connect: déjà connecté au dashboard manager\n"); return 0; }
+
+    /* Le dashboard manager doit être lancé AVANT la simulation : quelques tentatives pour
+       tolérer un démarrage simultané (2 s max), puis dégradation (EF-B4/D15). */
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(DASH_PORT);
     inet_pton(AF_INET, DASH_HOST, &addr.sin_addr);
-    if (connect(g_sock, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
+    int attempts = 0;
+    for (;;) {
+        g_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (g_sock == SOCK_INV) { dash_log(0, "connect: socket() a échoué\n"); return -1; }
+        if (connect(g_sock, (struct sockaddr*)&addr, sizeof(addr)) == 0) break;
 #if defined(_WIN32)
-        fprintf(stderr, "connect WSA err=%d\n", WSAGetLastError());
+        int wsa_err = WSAGetLastError();
 #else
-        fprintf(stderr, "connect errno=%d\n", errno);
+        int wsa_err = errno;
 #endif
-        sock_close(g_sock); g_sock = SOCK_INV; return -2;
+        sock_close(g_sock); g_sock = SOCK_INV;
+        if (++attempts >= 10) {
+            dash_log(0, "connect: échec vers %s:%d (code %d) — dashboard manager absent ?\n"
+                    "  Lancer le dashboard manager AVANT la simulation ; les blocs Input\n"
+                    "  utiliseront leur defaultValue et les Output seront perdus.\n",
+                 DASH_HOST, DASH_PORT, wsa_err);
+            return -2;
+        }
+        dash_log(1, "connect: dashboard manager pas encore joignable (tentative %d/10, code %d), nouvel essai dans 200 ms\n",
+             attempts, wsa_err);
+        sleep_ms(200);
     }
     int one = 1;
     setsockopt(g_sock, IPPROTO_TCP, TCP_NODELAY, (const char*)&one, sizeof(one));
@@ -115,14 +186,17 @@ DASHBOARD_API int dashboard_client_connect(const char* variablesCsv, const char*
     char esc[8192];
     char vars[8192] = "";
     size_t o = 0;
+    int var_count = 0;
     vars[o++] = '[';
     if (variablesCsv && *variablesCsv) {
         char tmp[8192];
         strncpy(tmp, variablesCsv, sizeof(tmp) - 1);
         tmp[sizeof(tmp) - 1] = 0;
         for (char* tok = strtok(tmp, ","); tok; tok = strtok(NULL, ",")) {
+            if (*tok == ' ') ++tok; /* tolère "a.b, c.d" */
             json_escape(tok, esc, sizeof(esc));
             o += (size_t)snprintf(vars + o, sizeof(vars) - o, "%s\"%s\"", o > 1 ? "," : "", esc);
+            ++var_count;
         }
     }
     vars[o++] = ']';
@@ -138,6 +212,7 @@ DASHBOARD_API int dashboard_client_connect(const char* variablesCsv, const char*
             "{\"type\":\"hello\",\"version\":0,\"role\":\"simulation\",\"variables\":%s}", vars);
     }
     if (send_line(hello) != 0) { sock_close(g_sock); g_sock = SOCK_INV; return -3; }
+    dash_log(1, "hello envoyé (%d variable(s))\n", var_count);
 
     /* attend helloAck (ou error) avec timeout 5 s */
 #if defined(_WIN32)
@@ -145,25 +220,36 @@ DASHBOARD_API int dashboard_client_connect(const char* variablesCsv, const char*
     setsockopt(g_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 #else
     struct timeval tv; tv.tv_sec = 5; tv.tv_usec = 0;
-    setsockopt(g_sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(g_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 #endif
     char buf[65536];
     int n = recv(g_sock, buf, sizeof(buf) - 1, 0);
-    if (n <= 0) { fprintf(stderr, "helloAck: recv n=%d\n", n); sock_close(g_sock); g_sock = SOCK_INV; g_connected = 0; return -4; }
+    if (n <= 0) { dash_log(0, "helloAck: aucune réponse (recv n=%d)\n", n); sock_close(g_sock); g_sock = SOCK_INV; g_connected = 0; return -4; }
     buf[n] = 0;
-    if (strstr(buf, "\"helloAck\"") == NULL) { fprintf(stderr, "helloAck absent: %s\n", buf); sock_close(g_sock); g_sock = SOCK_INV; g_connected = 0; return -5; }
+    if (strstr(buf, "\"helloAck\"") == NULL) { dash_log(0, "helloAck absent, réponse du manager : %s\n", buf); sock_close(g_sock); g_sock = SOCK_INV; g_connected = 0; return -5; }
     g_connected = 1;
+    dash_log(1, "helloAck reçu — connecté au dashboard manager %s:%d\n", DASH_HOST, DASH_PORT);
     return 0;
 }
 
 static void push_output(const char* name, const char* valueJson) {
-    if (!g_connected || g_sock == SOCK_INV) return;
+    if (!g_connected || g_sock == SOCK_INV) {
+        dash_log(2, "output %s=%s ignoré (non connecté)\n", name, valueJson);
+        return;
+    }
     char line[4096];
     snprintf(line, sizeof(line),
         "{\"type\":\"data\",\"version\":0,\"seq\":%lu,\"time\":0,\"values\":{\"%s\":%s}}",
         ++g_seq, name, valueJson);
-    /* time renseigné par le harness en prod ; le pivot calcule le ratio de toute façon */
     send_line(line);
+    /* time renseigné par le harness en prod ; le pivot calcule le ratio de toute façon */
+    entry_t* e = find_entry(name);
+    if (e && !e->logged_push) {
+        dash_log(1, "première donnée poussée : %s = %s (seq %lu)\n", name, valueJson, g_seq);
+        e->logged_push = 1;
+    } else {
+        dash_log(2, "output %s = %s (seq %lu)\n", name, valueJson, g_seq);
+    }
 }
 
 DASHBOARD_API void dashboard_client_output_real(const char* name, double value, const char* dashboardFile) {
@@ -198,6 +284,7 @@ static void apply_set(const char* name, const char* valueJson) {
         e->int_v = strtoll(valueJson, NULL, 10);
     }
     e->has_value = 1;
+    dash_log(1, "cmd set reçu : %s = %s\n", name, valueJson);
 }
 
 /* Lit les commandes en attente (non bloquant) : cmd set -> apply_set */
@@ -241,7 +328,15 @@ static void poll_commands(void) {
 static double input_real(const char* name, double dflt) {
     poll_commands();
     entry_t* e = find_entry(name);
-    if (e && e->has_value) return e->is_bool ? (double)e->int_v : e->real_v;
+    if (e && e->has_value) {
+        dash_log(2, "input %s = %.17g (reçu du dashboard)\n", name, e->is_bool ? (double)e->int_v : e->real_v);
+        return e->is_bool ? (double)e->int_v : e->real_v;
+    }
+    if (e && !e->logged_dflt) {
+        dash_log(1, "input %s : aucune valeur reçue du dashboard, defaultValue=%.17g utilisé\n", name, dflt);
+        e->logged_dflt = 1;
+    }
+    dash_log(2, "input %s = %.17g (default)\n", name, dflt);
     return dflt; /* EF-B4/D15 : jamais reçu -> defaultValue */
 }
 
@@ -254,7 +349,14 @@ DASHBOARD_API int dashboard_client_input_integer(const char* name, int defaultVa
     (void)dashboardFile;
     poll_commands();
     entry_t* e = find_entry(name);
-    if (e && e->has_value) return (int)(e->is_bool ? e->int_v : e->real_v != 0 ? (long long)e->real_v : e->int_v);
+    if (e && e->has_value) {
+        dash_log(2, "input %s = %d (reçu du dashboard)\n", name, (int)(e->is_bool ? e->int_v : e->real_v != 0 ? (long long)e->real_v : e->int_v));
+        return (int)(e->is_bool ? e->int_v : e->real_v != 0 ? (long long)e->real_v : e->int_v);
+    }
+    if (e && !e->logged_dflt) {
+        dash_log(1, "input %s : aucune valeur reçue du dashboard, defaultValue=%d utilisé\n", name, defaultValue);
+        e->logged_dflt = 1;
+    }
     return defaultValue;
 }
 
@@ -262,15 +364,23 @@ DASHBOARD_API int dashboard_client_input_boolean(const char* name, int defaultVa
     (void)dashboardFile;
     poll_commands();
     entry_t* e = find_entry(name);
-    if (e && e->has_value) return e->is_bool ? (int)e->int_v : (e->real_v != 0);
+    if (e && e->has_value) {
+        dash_log(2, "input %s = %d (reçu du dashboard)\n", name, e->is_bool ? (int)e->int_v : (e->real_v != 0));
+        return e->is_bool ? (int)e->int_v : (e->real_v != 0);
+    }
+    if (e && !e->logged_dflt) {
+        dash_log(1, "input %s : aucune valeur reçue du dashboard, defaultValue=%d utilisé\n", name, defaultValue);
+        e->logged_dflt = 1;
+    }
     return defaultValue;
 }
 
 DASHBOARD_API void dashboard_client_state(const char* state) {
-    if (!g_connected) return;
+    if (!g_connected) { dash_log(2, "state \"%s\" ignoré (non connecté)\n", state); return; }
     char line[256];
     snprintf(line, sizeof(line), "{\"type\":\"state\",\"version\":0,\"state\":\"%s\"}", state);
     send_line(line);
+    dash_log(1, "state -> %s\n", state);
 }
 
 DASHBOARD_API int dashboard_client_command(const char* cmdJsonLine) {
@@ -279,7 +389,10 @@ DASHBOARD_API int dashboard_client_command(const char* cmdJsonLine) {
 }
 
 DASHBOARD_API void dashboard_client_disconnect(void) {
-    if (g_sock != SOCK_INV) { sock_close(g_sock); g_sock = SOCK_INV; }
+    if (g_sock != SOCK_INV) {
+        dash_log(1, "déconnexion (fin de simulation)\n");
+        sock_close(g_sock); g_sock = SOCK_INV;
+    }
     g_connected = 0;
     g_entry_count = 0;
 }

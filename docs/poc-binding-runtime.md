@@ -47,10 +47,10 @@ En pratique avec omc : déclarer la fonction C **avec** `threadData_t*` en premi
 
 - Pas de paquet `omc` dans Debian 13 (apt), pas de binaire Linux autonome récupérable via git seul (les releases officielles passent par build.openmodelica.org / conda-forge `omcompiler` ≤ 1.26.3, et aucun micromamba/conda installable via pip ici).
 - Le code source seul ne suffit pas : il faudrait compiler tout OMCompiler (build lourd).
-- **Décision** : le POC réel (compile `demos/Demo.mo` + run + flux dashboard) se fait sur un poste avec OM v1.27.1 installé, ou en CI via un job qui installe OM (voir `scripts/install-om.sh` à écrire côté CI Windows/Linux avec le paquet officiel).
+- **Décision** : le POC réel (compile `modelica/Dashboard/Examples/Demo.mo` + run + flux dashboard) se fait sur un poste avec OM v1.27.1 installé, ou en CI via un job qui installe OM (voir `scripts/install-om.sh` à écrire côté CI Windows/Linux avec le paquet officiel).
 
 ## 4. Ce qui est déjà validé ici (sans omc)
 
-- Le client C du canal (connexion, hello, data, set, state) : testé de bout en bout contre le vrai pivot (tests/integration).
+- Le client C du canal (connexion, hello, data, set, state) : testé de bout en bout contre le vrai dashboard manager (ex-pivot, tests/integration).
 - La résolution nom→valeur est simulée par une table interne dans le harness (`DASHBOARD_NO_OMC`) ; en production elle est remplacée par `data->realVars[id]` (ADR-0014).
 - La synchro temps réel et le pilotage run/pause restent à valider au POC réel.

@@ -37,7 +37,7 @@ DASHBOARD_API int dashboard_client_input_boolean(const char* name, int defaultVa
 // Signale un changement d'état de la sim (D40) : "running|paused|stopped|finished".
 DASHBOARD_API void dashboard_client_state(const char* state);
 
-// Envoie une commande de pilotage (utilisé par les tests ; le pilotage vient du viewer).
+// Envoie une commande de pilotage (utilisé par les tests ; le pilotage vient de l'UI (navigateur) via le dashboard manager).
 DASHBOARD_API int dashboard_client_command(const char* cmdJsonLine);
 
 // Déconnexion propre.

@@ -2,6 +2,8 @@
 
 Une fiche par décision tranchée. Les décisions de mise en œuvre de la session de cadrage dev figurent dans l'[ADR-0013](0013-decisions-mise-en-oeuvre.md).
 
+**2026-11-04 — [ADR-0015](0015-retour-navigateur-dashboard-manager.md)** : retour arrière (rendu/édition dans le navigateur, pivot renommé dashboard manager) ; les fiches impactées (0001, 0004, 0005, 0007, 0008, 0010, 0012, 0013) portent une note de statut.
+
 | ADR | Sujet |
 |---|---|
 | [0001](0001-architecture-a4b.md) | Architecture A4b retenue, Windows-only V1, pivot embarqué |
@@ -18,3 +20,4 @@ Une fiche par décision tranchée. Les décisions de mise en œuvre de la sessio
 | [0012](0012-perf.md) | Performance : cible 100–1000 var × 10–100 Hz, backpressure « pivot pousse / viewer écrase » |
 | [0014](0014-binding-runtime-detail.md) | Détail du binding par nom : accès via `threadData->localRoots[LOCAL_ROOT_SIMULATION_DATA]` → `data->modelData->realVarsData[]` → `data->realVars[id]` (OM v1.27.1) |
 | [0013](0013-decisions-mise-en-oeuvre.md) | Décisions de mise en œuvre (port 51234, OM v1.27.1, draw.io v32.3.0, éditeur iframe WebView2, stack C++20/Catch2/nlohmann, widgets V1, versions v0, POC parallèle, ordre de dev) |
+| [0015](0015-retour-navigateur-dashboard-manager.md) | Retour arrière (2026-11-04) : rendu/édition dans le navigateur, « pivot » renommé dashboard manager (processus autonome, P2), suppression du moteur WebView2 — remet en cause 0001 (P3), 0004, 0005, 0007, 0008, 0010, 0012 et D30/D34/D42 de 0013 |

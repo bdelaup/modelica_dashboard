@@ -1,0 +1,3 @@
+# DLL installee par le build (CMake post-build depuis modelica/csrc), ne pas committer.
+*
+!.gitignore

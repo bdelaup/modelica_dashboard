@@ -5,14 +5,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 
+# Sources UTF-8 (accents dans les chaînes) : MSVC les relit en cp1252 sinon (mojibake).
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 # Monorepo : chaque composant a aussi son propre build (spec §7), mais la racine
 # orchestre shared + modelica/csrc + tests pour les tests d'intégration.
+# Le dashboard manager (UI servie au navigateur, ADR-0015) y sera ajouté au dev.
 add_subdirectory(shared)
 add_subdirectory(modelica/csrc)
-
-# viewer/ : viewer_core + viewer_headless partout (portage Linux/CI) ;
-# le shell viewer.exe Win32/WebView2 n'est compilé que sur Windows (D1).
-add_subdirectory(viewer)
 
 include(CTest)
 enable_testing()

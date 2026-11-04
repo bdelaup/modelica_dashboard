@@ -173,7 +173,7 @@ TEST_CASE("state sim -> simState (D40) et commande set relayée à la sim", "[pi
     for (int i = 0; i < 500 && f.simStates.size() < 2; ++i) std::this_thread::sleep_for(10ms);
     REQUIRE(f.simStates == std::vector<std::string>{"running", "paused"});
 
-    // viewer -> pivot -> sim : cmd set (attendre que le handshake soit traité)
+    // UI -> manager -> sim : cmd set (attendre que le handshake soit traité)
     for (int i = 0; i < 500 && !f.pivot.simConnected(); ++i) std::this_thread::sleep_for(10ms);
     REQUIRE(f.pivot.simConnected());
     REQUIRE(f.pivot.sendCommand(makeCmd("set", json{{"variable", "a"}, {"value", 2.0}})));

@@ -1,6 +1,6 @@
 # ADR-0005 — WebView2 charge l'IHM via ressources embarquées + protocole custom app://
 
-**Statut** : acté
+**Statut** : acté — entièrement remplacé : plus de WebView2 ni de app://, UI servie en HTTP/WebSocket loopback : [ADR-0015](0015-retour-navigateur-dashboard-manager.md) (2026-11-04)
 **Références** : [spec technique](../spec_technique.md) D9, §4.1
 
 ## Contexte

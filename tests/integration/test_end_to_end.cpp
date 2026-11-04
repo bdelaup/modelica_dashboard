@@ -49,7 +49,7 @@ int main() {
         std::fflush(stdout);
     });
 
-    // attend la connexion puis envoie cmd set motor.throttle = 0.9 (viewer -> pivot -> sim)
+    // attend la connexion puis envoie cmd set motor.throttle = 0.9 (UI -> manager -> sim)
     for (int i = 0; i < 200 && connected == 0; ++i) std::this_thread::sleep_for(10ms);
     CHECK(connected == 1);
     std::this_thread::sleep_for(200ms);

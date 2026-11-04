@@ -2,7 +2,7 @@
 
 **Projet** : environnement de tableaux de bord interactifs pour OpenModelica (exécution temps réel + supervision externe)
 **Version** : 1.0
-**Statut** : en exploration — **aucune préférence retenue**, toutes les possibilités sont listées à égalité
+**Statut** : en exploration — **aucune préférence retenue**, toutes les possibilités sont listées à égalité — document historique ; décisions à jour : [spec technique](spec_technique.md) + [ADR-0015](adr/0015-retour-navigateur-dashboard-manager.md) (2026-11-04)
 **Référence** : [Spécification de besoins](besoin.md) (EF/ENF)
 
 ---

@@ -1,0 +1,8 @@
+InputReal
+InputInteger
+InputBoolean
+OutputReal
+OutputInteger
+OutputBoolean
+Connect
+SetState

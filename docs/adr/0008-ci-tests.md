@@ -1,6 +1,6 @@
 # ADR-0008 — CI GitHub Actions (job Windows) + tests unitaires/intégration/contrat, rejouables en local
 
-**Statut** : acté
+**Statut** : acté — CI sans WebView2/NuGet/tests JS du viewer : [ADR-0015](0015-retour-navigateur-dashboard-manager.md) (2026-11-04)
 **Références** : [spec technique](../spec_technique.md) D18/D19, §9
 
 ## Contexte

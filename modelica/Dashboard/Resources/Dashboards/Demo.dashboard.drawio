@@ -1,0 +1,25 @@
+<mxfile dashboardVersion="0" host="modelica_dashboard">
+  <diagram name="Demo" id="demo">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="w-speed" type="gauge" variable="motor.speed" label="Vitesse (m/s)" vertex="1" parent="1" UserObject="1">
+          <mxGeometry x="40" y="40" width="200" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="w-on" type="button" variable="motor.on" label="Marche" vertex="1" parent="1" UserObject="1">
+          <mxGeometry x="40" y="200" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="w-curve" type="curve" variable="motor.speed" label="Vitesse (courbe)" vertex="1" parent="1" UserObject="1">
+          <mxGeometry x="280" y="40" width="400" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="w-throttle" type="slider" variable="motor.throttle" label="Consigne" vertex="1" parent="1" UserObject="1">
+          <mxGeometry x="40" y="300" width="240" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="w-log" type="log" variable="motor.speed" label="Journal vitesse" vertex="1" parent="1" UserObject="1">
+          <mxGeometry x="280" y="300" width="400" height="160" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
